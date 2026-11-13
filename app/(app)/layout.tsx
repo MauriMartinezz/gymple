@@ -20,6 +20,9 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
             <Link href="/exercises" className="text-sm font-medium text-fg-muted hover:text-fg">
               Exercises
             </Link>
+            <Link href="/routines" className="text-sm font-medium text-fg-muted hover:text-fg">
+              Routines
+            </Link>
           </nav>
           <Suspense fallback={null}>
             <UserMenu />
