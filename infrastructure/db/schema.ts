@@ -13,6 +13,7 @@ import {
   uniqueIndex,
   varchar,
 } from "drizzle-orm/mysql-core";
+import { MUSCLE_GROUPS } from "../../modules/exercises/domain/exercise";
 
 /*
  * Model overview
@@ -117,19 +118,6 @@ export const rateLimits = mysqlTable(
   (table) => [uniqueIndex("rate_limits_key_uq").on(table.key)],
 );
 
-export const muscleGroups = [
-  "chest",
-  "back",
-  "shoulders",
-  "biceps",
-  "triceps",
-  "legs",
-  "glutes",
-  "core",
-  "full_body",
-  "other",
-] as const;
-
 export const exercises = mysqlTable(
   "exercises",
   {
@@ -138,7 +126,7 @@ export const exercises = mysqlTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     name: varchar({ length: 120 }).notNull(),
-    muscleGroup: mysqlEnum("muscle_group", muscleGroups).notNull(),
+    muscleGroup: mysqlEnum("muscle_group", MUSCLE_GROUPS).notNull(),
     notes: text(),
     archivedAt: timestamp("archived_at", { mode: "date" }),
     createdAt,
