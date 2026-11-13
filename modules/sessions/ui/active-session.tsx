@@ -2,7 +2,7 @@ import Link from "next/link";
 import { buttonClass } from "@/shared/ui/styles";
 import { discardSessionAction } from "./actions";
 import { ConfirmDelete } from "./confirm-delete";
-import { formatTarget, plural, type ActiveSessionView } from "./session-view";
+import { formatTargets, plural, type ActiveSessionView } from "./session-view";
 import { AddExerciseForm, LogSetForm, SetRow } from "./set-forms";
 
 /** The workout in progress: one card per exercise, then add, finish and discard. */
@@ -28,8 +28,9 @@ export function ActiveSession({ view }: { view: ActiveSessionView }) {
                 {card.name}
               </h2>
               <p className="mt-0.5 text-sm text-fg-subtle">
-                {card.target ? formatTarget(card.target) : "Added in this workout"}
-                {card.target && ` · ${card.sets.length}/${card.target.sets} done`}
+                {card.plannedSets === null
+                  ? "Added in this workout"
+                  : `${formatTargets(card.targets)} · ${card.sets.length}/${card.plannedSets} done`}
               </p>
             </div>
 

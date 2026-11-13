@@ -15,11 +15,20 @@ export interface SetPrefill {
   restSeconds: string;
 }
 
+export interface ExerciseTarget {
+  sets: number;
+  repsMin: number;
+  repsMax: number;
+  restSeconds: number;
+}
+
 export interface ExerciseCard {
   exerciseId: number;
   name: string;
-  /** The routine's targets, or null for an exercise added during the workout. */
-  target: { sets: number; repsMin: number; repsMax: number; restSeconds: number } | null;
+  /** Each routine occurrence of the exercise, in routine order; empty when added during the workout. */
+  targets: ExerciseTarget[];
+  /** Sets planned across every occurrence, or null when added during the workout. */
+  plannedSets: number | null;
   sets: LoggedSet[];
   prefill: SetPrefill;
   /** "Last time: 80 kg × 8", from the most recent finished workout. */
@@ -46,9 +55,14 @@ export function formatSet(set: Pick<LoggedSet, "weightKg" | "reps">): string {
   return `${formatWeight(set.weightKg)} × ${set.reps}`;
 }
 
-export function formatTarget(target: NonNullable<ExerciseCard["target"]>): string {
+export function formatTarget(target: ExerciseTarget): string {
   const reps = target.repsMin === target.repsMax ? `${target.repsMin}` : `${target.repsMin}–${target.repsMax}`;
   return `${target.sets} × ${reps} · ${target.restSeconds} s rest`;
+}
+
+/** A repeated exercise's occurrences, in routine order: "3 × 8–12 · 90 s rest, then 1 × 15 · 45 s rest". */
+export function formatTargets(targets: readonly ExerciseTarget[]): string {
+  return targets.map(formatTarget).join(", then ");
 }
 
 export function formatDuration(startedAt: Date, finishedAt: Date): string {
@@ -63,13 +77,14 @@ export function formatDate(date: Date): string {
 }
 
 /**
- * Builds the active workout screen: the routine's exercises in routine order
- * (first occurrence of a repeated exercise only), then exercises added during
- * the workout in the order first logged.
+ * Builds the active workout screen: the routine's exercises in routine order,
+ * one card per exercise at its first occurrence carrying every occurrence's
+ * targets, then exercises added during the workout in the order first logged.
  *
  * Prefill: weight and reps of the exercise's last set in this workout, else
- * of its last set in the most recent finished workout; rest from the last
- * set, else the routine target.
+ * of its last set in the most recent finished workout. Rest comes from the
+ * occurrence the next set belongs to when that set starts it, else from the
+ * last set, else from that occurrence's target.
  */
 export function buildActiveSessionView(
   session: WorkoutSession,
@@ -81,35 +96,46 @@ export function buildActiveSessionView(
   const cards: ExerciseCard[] = [];
   const shown = new Set<number>();
 
-  const card = (exerciseId: number, target: ExerciseCard["target"]): ExerciseCard => {
+  const card = (exerciseId: number, targets: ExerciseTarget[]): ExerciseCard => {
     const sets = session.sets.filter((s) => s.exerciseId === exerciseId);
     const previous = lastPerformance.get(exerciseId) ?? null;
+    const next = nextTarget(targets, sets.length);
+    const inSession = sets.at(-1) ?? null;
     return {
       exerciseId,
       name: names.get(exerciseId) ?? "Unknown exercise",
-      target,
+      targets,
+      plannedSets: targets.length === 0 ? null : targets.reduce((sum, t) => sum + t.sets, 0),
       sets,
-      prefill: prefillFor(sets.at(-1) ?? null, previous, target?.restSeconds ?? null),
+      prefill: prefillFor(
+        inSession,
+        previous,
+        // A set that starts a later occurrence takes that occurrence's rest, not the previous set's.
+        (next?.startsOccurrence ? null : inSession?.restSeconds) ?? next?.target.restSeconds ?? null,
+      ),
       lastTime: previous ? `Last time: ${formatSet(previous)}` : null,
     };
   };
 
+  const targetsByExercise = new Map<number, ExerciseTarget[]>();
   for (const item of routine?.items ?? []) {
-    if (shown.has(item.exerciseId)) continue;
-    shown.add(item.exerciseId);
-    cards.push(
-      card(item.exerciseId, {
-        sets: item.targetSets,
-        repsMin: item.targetRepsMin,
-        repsMax: item.targetRepsMax,
-        restSeconds: item.restSeconds,
-      }),
-    );
+    const targets = targetsByExercise.get(item.exerciseId) ?? [];
+    targets.push({
+      sets: item.targetSets,
+      repsMin: item.targetRepsMin,
+      repsMax: item.targetRepsMax,
+      restSeconds: item.restSeconds,
+    });
+    targetsByExercise.set(item.exerciseId, targets);
+  }
+  for (const [exerciseId, targets] of targetsByExercise) {
+    shown.add(exerciseId);
+    cards.push(card(exerciseId, targets));
   }
   for (const set of session.sets) {
     if (shown.has(set.exerciseId)) continue;
     shown.add(set.exerciseId);
-    cards.push(card(set.exerciseId, null));
+    cards.push(card(set.exerciseId, []));
   }
 
   const addable = exercises
@@ -126,9 +152,26 @@ export function buildActiveSessionView(
   };
 }
 
-function prefillFor(inSession: LoggedSet | null, previous: LoggedSet | null, targetRest: number | null): SetPrefill {
+/**
+ * The occurrence the set after `logged` sets belongs to (the last one once
+ * the plan is exceeded), and whether that set is the first of a later occurrence.
+ */
+function nextTarget(
+  targets: readonly ExerciseTarget[],
+  logged: number,
+): { target: ExerciseTarget; startsOccurrence: boolean } | null {
+  let start = 0;
+  for (const [index, target] of targets.entries()) {
+    if (logged < start + target.sets || index === targets.length - 1) {
+      return { target, startsOccurrence: index > 0 && logged === start };
+    }
+    start += target.sets;
+  }
+  return null;
+}
+
+function prefillFor(inSession: LoggedSet | null, previous: LoggedSet | null, rest: number | null): SetPrefill {
   const source = inSession ?? previous;
-  const rest = inSession?.restSeconds ?? targetRest;
   return {
     weightKg: source ? String(source.weightKg) : "",
     reps: source ? String(source.reps) : "",

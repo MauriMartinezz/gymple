@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { RoutineItem } from "@/modules/routines/domain/routine";
 import type { LoggedSet, WorkoutSession } from "../domain/session";
-import { buildActiveSessionView, formatDuration, groupSets, toHistoryEntry } from "./session-view";
+import { buildActiveSessionView, formatDuration, formatTargets, groupSets, toHistoryEntry } from "./session-view";
 
 const BENCH = 10;
 const DIPS = 11;
@@ -58,13 +58,45 @@ describe("buildActiveSessionView", () => {
     );
 
     expect(view.title).toBe("Push day");
-    expect(view.cards.map((c) => [c.name, c.target?.sets ?? null, c.sets.length])).toEqual([
-      ["Dips", 3, 1],
+    expect(view.cards.map((c) => [c.name, c.plannedSets, c.sets.length])).toEqual([
+      ["Dips", 6, 1],
       ["Bench press", 3, 0],
       ["Row", null, 1],
       ["Old press", null, 1],
     ]);
     expect(view.addable).toEqual([]);
+  });
+
+  it("shows every occurrence of a repeated exercise on its card, planned as their total", () => {
+    const view = buildActiveSessionView(
+      session([set(DIPS, { restSeconds: 90 }), set(DIPS, { setNumber: 2, restSeconds: 90 })]),
+      {
+        name: "Push day",
+        items: [
+          item(DIPS, { targetSets: 2, restSeconds: 90 }),
+          item(BENCH),
+          item(DIPS, { targetSets: 1, targetRepsMin: 15, targetRepsMax: 15, restSeconds: 45 }),
+        ],
+      },
+      exercises,
+      new Map(),
+    );
+
+    const dips = view.cards[0];
+    expect(dips.targets).toEqual([
+      { sets: 2, repsMin: 8, repsMax: 12, restSeconds: 90 },
+      { sets: 1, repsMin: 15, repsMax: 15, restSeconds: 45 },
+    ]);
+    expect(dips.plannedSets).toBe(3);
+    expect(formatTargets(dips.targets)).toBe("2 × 8–12 · 90 s rest, then 1 × 15 · 45 s rest");
+    // The next set opens the second occurrence, so its rest comes from there.
+    expect(dips.prefill.restSeconds).toBe("45");
+  });
+
+  it("marks exercises added during the workout as unplanned", () => {
+    const view = buildActiveSessionView(session([set(ROW)]), { name: "Push day", items: [item(BENCH)] }, exercises, new Map());
+
+    expect(view.cards[1]).toMatchObject({ name: "Row", targets: [], plannedSets: null });
   });
 
   it("offers the active exercises that are not in the workout yet", () => {
