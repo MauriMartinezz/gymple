@@ -171,13 +171,27 @@ describe("finishWorkout", () => {
       Array.from({ length: 21 }, (): [number] => [BENCH]),
     );
 
-    expect(await finishWorkout(uow, ALICE, session.id, "", { updateRoutine: true })).toEqual({
+    const exerciseName = async (id: number) => (id === BENCH ? "Bench press" : null);
+
+    expect(await finishWorkout(uow, ALICE, session.id, "", { updateRoutine: true, exerciseName })).toEqual({
       ok: false,
       reason: "invalid",
-      errors: { routine: "The routine could not be updated: Sets must be a whole number from 1 to 20." },
+      errors: { routine: "The routine could not be updated (Bench press): Sets must be a whole number from 1 to 20." },
     });
     expect((await getSession(sessions, ALICE, session.id))?.finishedAt).toBeNull();
     expect(await routines.findById(ALICE, routine.id)).toEqual(routine);
+  });
+
+  it("leaves the exercise out of the message when its name is unknown", async () => {
+    const routine = await routineOf(ALICE, [item(BENCH)]);
+    const session = await sessionWith(
+      routine.id,
+      Array.from({ length: 21 }, (): [number] => [BENCH]),
+    );
+
+    expect(await finishWorkout(uow, ALICE, session.id, "", { updateRoutine: true })).toMatchObject({
+      errors: { routine: "The routine could not be updated: Sets must be a whole number from 1 to 20." },
+    });
   });
 
   it("keeps the existing finish errors and leaves the routine alone", async () => {

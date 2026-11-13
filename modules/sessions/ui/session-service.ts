@@ -1,7 +1,7 @@
 import "server-only";
 import { db } from "@/infrastructure/db/client";
 import { requireUser } from "@/modules/auth/infrastructure/session";
-import { listExercises } from "@/modules/exercises/application/exercise-use-cases";
+import { getExercise, listExercises } from "@/modules/exercises/application/exercise-use-cases";
 import { exerciseRepository } from "@/modules/exercises/ui/exercise-service";
 import { getRoutine, listRoutines } from "@/modules/routines/application/routine-use-cases";
 import { routineRepository } from "@/modules/routines/ui/routine-service";
@@ -30,6 +30,11 @@ export { parseSessionId } from "./parse-session-form";
 /** Composition root: the one place that picks the MySQL adapters. */
 export const sessionRepository = new DrizzleSessionRepository(db);
 export const sessionUnitOfWork = new DrizzleSessionUnitOfWork(db);
+
+/** An exercise's name for messages; null when the user does not own it. */
+export async function exerciseNameOf(userId: number, exerciseId: number): Promise<string | null> {
+  return (await getExercise(exerciseRepository, userId, exerciseId))?.name ?? null;
+}
 
 /*
  * Reads for pages. Each one resolves the signed-in user itself and passes

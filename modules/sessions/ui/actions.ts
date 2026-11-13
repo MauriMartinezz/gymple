@@ -16,7 +16,7 @@ import {
   type SetCommandResult,
 } from "../application/session-use-cases";
 import { parseSessionId, readSetForm, type SetFormValues } from "./parse-session-form";
-import { sessionRepository, sessionUnitOfWork } from "./session-service";
+import { exerciseNameOf, sessionRepository, sessionUnitOfWork } from "./session-service";
 
 export interface StartSessionState {
   error?: string;
@@ -115,6 +115,7 @@ export async function finishSessionAction(_prev: FinishFormState, formData: Form
 
   const result = await finishWorkout(sessionUnitOfWork, user.id, sessionId, values.notes, {
     updateRoutine: formData.get("updateRoutine") === "yes",
+    exerciseName: (exerciseId) => exerciseNameOf(user.id, exerciseId),
   });
   if (result.ok) redirect(`/sessions/${sessionId}`);
   if (result.reason === "not_found") return { errors: { form: NOT_ACTIVE }, values };

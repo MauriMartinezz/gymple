@@ -33,6 +33,10 @@ const state = vi.hoisted(() => ({
 }));
 
 const requireUser = vi.hoisted(() => vi.fn());
+/** Names by owner, as the exercises module would resolve them. */
+const exerciseNameOf = vi.hoisted(() =>
+  vi.fn(async (userId: number, exerciseId: number) => (userId === 1 && exerciseId === 10 ? "Bench press" : null)),
+);
 const refresh = vi.hoisted(() => vi.fn());
 
 vi.mock("@/modules/auth/infrastructure/session", () => ({ requireUser }));
@@ -43,6 +47,7 @@ vi.mock("./session-service", () => ({
   get sessionUnitOfWork() {
     return state.uow;
   },
+  exerciseNameOf,
 }));
 vi.mock("next/navigation", () => ({
   redirect: (url: string) => {
@@ -137,6 +142,7 @@ beforeEach(() => {
   state.sessions.archiveExercise(OLD_EXERCISE);
   signIn(ALICE);
   refresh.mockReset();
+  exerciseNameOf.mockClear();
   requireUser.mockReset().mockImplementation(async () => {
     if (!state.currentUser) throw new RedirectSignal("/login");
     return state.currentUser;
@@ -518,6 +524,22 @@ describe("finishSessionAction", () => {
     });
     expect((await sessionOf(ALICE.id, session.id))!.finishedAt).toBeNull();
     expect((await state.routines.findById(ALICE.id, routine.id))!.items).toHaveLength(50);
+  });
+
+  it("names the exercise, looked up for the signed-in user, when one of its items is rejected", async () => {
+    const routine = await routineOf(ALICE.id, { items: [item(BENCH)] });
+    const session = await activeSession(ALICE.id, Array.from({ length: 21 }, () => BENCH), routine.id);
+
+    const result = await finishSessionAction(
+      emptyFinishState,
+      form({ sessionId: session.id, notes: "", updateRoutine: "yes", userId: BOB.id }),
+    );
+
+    expect(result).toMatchObject({
+      errors: { routine: "The routine could not be updated (Bench press): Sets must be a whole number from 1 to 20." },
+    });
+    expect(exerciseNameOf).toHaveBeenCalledWith(ALICE.id, BENCH);
+    expect((await sessionOf(ALICE.id, session.id))!.finishedAt).toBeNull();
   });
 
   it("asks for at least one set", async () => {

@@ -33,14 +33,18 @@ export async function previewRoutineUpdate(
  * Finishes the session like `finishSession`. With `updateRoutine`, the
  * session's additions are also saved to its routine in the same unit of work
  * (when there are any): if the routine rejects them, the session stays
- * active, the routine is unchanged and `errors.routine` says why.
+ * active, the routine is unchanged and `errors.routine` says why, naming the
+ * exercise through `exerciseName` when the problem is one of its items.
  */
 export async function finishWorkout(
   uow: SessionUnitOfWork,
   userId: number,
   sessionId: number,
   rawNotes: unknown,
-  { updateRoutine: withRoutineUpdate }: { updateRoutine: boolean },
+  {
+    updateRoutine: withRoutineUpdate,
+    exerciseName,
+  }: { updateRoutine: boolean; exerciseName?: (exerciseId: number) => Promise<string | null> },
 ): Promise<FinishSessionResult> {
   try {
     return await uow.run(async ({ sessions, routines }) => {
@@ -51,12 +55,17 @@ export async function finishWorkout(
       if (!proposal) return finished;
       // Reuses the routines module's validation; a rejection undoes the finish above.
       const updated = await updateRoutine(routines, userId, proposal.routineId, proposal.input);
-      if (!updated.ok) throw new RoutineUpdateRejected(updated.reason === "invalid" ? updated.errors : null);
+      if (!updated.ok) {
+        throw new RoutineUpdateRejected(updated.reason === "invalid" ? updated.errors : null, proposal.input.items);
+      }
       return finished;
     });
   } catch (error) {
     if (error instanceof RoutineUpdateRejected) {
-      return { ok: false, reason: "invalid", errors: { routine: error.message } };
+      // Looked up after the rollback, only when there is something to name.
+      const name = error.exerciseId === null ? null : ((await exerciseName?.(error.exerciseId)) ?? null);
+      const subject = name ? `The routine could not be updated (${name})` : "The routine could not be updated";
+      return { ok: false, reason: "invalid", errors: { routine: `${subject}: ${error.message}` } };
     }
     throw error;
   }
@@ -75,15 +84,22 @@ async function proposalFor(
   return proposal.changes.length > 0 ? { ...proposal, routineId: routine.id } : null;
 }
 
-/** Thrown inside the unit of work so it rolls back; carries the message for the user. */
+/**
+ * Thrown inside the unit of work so it rolls back. Carries the first problem
+ * for the user and, when it belongs to one item, that item's exercise.
+ */
 class RoutineUpdateRejected extends Error {
-  constructor(errors: RoutineErrors | null) {
-    super(`The routine could not be updated: ${errors ? firstMessage(errors) : "it no longer exists."}`);
-    this.name = "RoutineUpdateRejected";
-  }
-}
+  readonly exerciseId: number | null;
 
-function firstMessage(errors: RoutineErrors): string {
-  const itemMessage = errors.itemErrors?.flatMap((item) => Object.values(item ?? {}))[0];
-  return errors.items ?? itemMessage ?? errors.name ?? errors.description ?? "it is not valid.";
+  constructor(errors: RoutineErrors | null, items: ReadonlyArray<{ exerciseId: number }>) {
+    const itemIndex = errors?.itemErrors?.findIndex((item) => item && Object.keys(item).length > 0) ?? -1;
+    const itemMessage = itemIndex >= 0 ? Object.values(errors!.itemErrors![itemIndex]!)[0] : undefined;
+    const message = errors
+      ? (errors.items ?? itemMessage ?? errors.name ?? errors.description ?? "it is not valid.")
+      : "it no longer exists.";
+    super(message);
+    this.name = "RoutineUpdateRejected";
+    // A list-level problem (such as too many exercises) names no exercise.
+    this.exerciseId = !errors?.items && itemMessage !== undefined ? (items[itemIndex]?.exerciseId ?? null) : null;
+  }
 }
