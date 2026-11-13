@@ -29,8 +29,9 @@ export interface RoutineUpdateProposal {
 /**
  * Only additions reach the template: an exercise missing from the routine is
  * appended with targets taken from its sets, and an exercise logged with more
- * sets than its target gets the target raised (on its first occurrence when
- * repeated). Fewer sets or skipped exercises never remove or lower anything.
+ * sets than planned gets the extra sets added to its target. A repeated exercise
+ * is planned as the sum of its occurrences; the extra goes on the first one.
+ * Fewer sets or skipped exercises never remove or lower anything.
  *
  * @param sets the session's sets, in logging order
  */
@@ -46,10 +47,15 @@ export function proposeRoutineUpdate(
   for (const item of items) {
     if (seen.has(item.exerciseId)) continue;
     seen.add(item.exerciseId);
-    const count = logged.get(item.exerciseId)?.length ?? 0;
-    if (count > item.targetSets) {
-      changes.push({ type: "raise_sets", exerciseId: item.exerciseId, from: item.targetSets, to: count });
-      item.targetSets = count;
+    // A repeated exercise is planned once per occurrence: compare against the total.
+    const planned = items
+      .filter((other) => other.exerciseId === item.exerciseId)
+      .reduce((total, other) => total + other.targetSets, 0);
+    const extra = (logged.get(item.exerciseId)?.length ?? 0) - planned;
+    if (extra > 0) {
+      const to = item.targetSets + extra;
+      changes.push({ type: "raise_sets", exerciseId: item.exerciseId, from: item.targetSets, to });
+      item.targetSets = to;
     }
   }
 

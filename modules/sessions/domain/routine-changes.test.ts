@@ -57,14 +57,24 @@ describe("proposeRoutineUpdate", () => {
     });
   });
 
-  it("matches extra sets to the first occurrence of a repeated exercise", () => {
+  it("adds only the sets beyond a repeated exercise's total target, on its first occurrence", () => {
     const template = routine([item(BENCH, { targetSets: 2 }), item(DIPS), item(BENCH, { targetSets: 5 })]);
-    const sets = times(4, () => set(BENCH));
+    const sets = times(9, () => set(BENCH)); // 7 planned in total, 2 extra
 
     expect(proposeRoutineUpdate(sets, template)).toEqual({
       changes: [{ type: "raise_sets", exerciseId: BENCH, from: 2, to: 4 }],
       input: routine([item(BENCH, { targetSets: 4 }), item(DIPS), item(BENCH, { targetSets: 5 })]),
     });
+  });
+
+  it.each([
+    ["exactly the planned total", 7],
+    ["fewer than the planned total", 4],
+  ])("proposes nothing for a repeated exercise logged %s", (_label, count) => {
+    const template = routine([item(BENCH, { targetSets: 2 }), item(DIPS), item(BENCH, { targetSets: 5 })]);
+    const sets = [...times(count, () => set(BENCH)), ...times(2, () => set(DIPS))];
+
+    expect(proposeRoutineUpdate(sets, template).changes).toEqual([]);
   });
 
   it("appends exercises not in the routine, in the order first logged", () => {

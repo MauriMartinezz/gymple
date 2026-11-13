@@ -49,6 +49,19 @@ describe("DrizzleSessionRepository concurrency", () => {
     const rejected = results.find((r) => r.status === "rejected");
     expect(rejected?.reason).toBeInstanceOf(ActiveSessionExistsError);
   });
+
+  it("numbers concurrently logged sets of one exercise without gaps or duplicates", async () => {
+    const { repo, alice, aliceExercises } = await seed();
+    const session = await repo.start(alice, null);
+    const input = { weightKg: 80, reps: 8, rpe: null, restSeconds: null };
+
+    await Promise.all(
+      Array.from({ length: 10 }, () => repo.addSet(alice, session.id, aliceExercises.first, input)),
+    );
+
+    const numbers = (await repo.findById(alice, session.id))?.sets.map((s) => s.setNumber);
+    expect([...(numbers ?? [])].sort((a, b) => a - b)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+  });
 });
 
 describe("DrizzleSessionRepository atomicity", () => {
