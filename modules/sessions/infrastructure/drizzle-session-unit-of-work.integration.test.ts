@@ -105,6 +105,18 @@ describe("DrizzleSessionUnitOfWork", () => {
     expect(await routines.findById(alice, routine.id)).toEqual(routine);
   });
 
+  it("finishes and updates the routine only once when two finishes race", async () => {
+    const { routine, sessionId } = await routineSession(1);
+
+    const results = await Promise.all([
+      finishWorkout(uow, alice, sessionId, "", { updateRoutine: true }),
+      finishWorkout(uow, alice, sessionId, "", { updateRoutine: true }),
+    ]);
+
+    expect(results.map((r) => (r.ok ? "ok" : r.reason)).sort()).toEqual(["not_found", "ok"]);
+    expect((await routines.findById(alice, routine.id))?.items).toEqual([item(bench), { ...item(dips), targetRepsMax: 8 }]);
+  });
+
   it("rolls back a routine update when the finish fails afterwards", async () => {
     const routine = await routines.create(alice, { name: "Push day", description: null, items: [item(bench)] });
     const empty = await sessions.start(alice, routine.id);
