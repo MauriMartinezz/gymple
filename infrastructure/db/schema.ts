@@ -1,5 +1,6 @@
 import { relations } from "drizzle-orm";
 import {
+  boolean,
   decimal,
   index,
   int,
@@ -27,16 +28,79 @@ import {
 const createdAt = timestamp("created_at", { mode: "date" }).notNull().defaultNow();
 const updatedAt = timestamp("updated_at", { mode: "date" }).notNull().defaultNow().onUpdateNow();
 
+/*
+ * Auth tables. Shape and property names follow Better Auth's core schema
+ * (configured with numeric serial ids); do not rename properties.
+ */
+
 export const users = mysqlTable(
   "users",
   {
     id: int().primaryKey().autoincrement(),
     email: varchar({ length: 255 }).notNull(),
     name: varchar({ length: 120 }).notNull(),
+    emailVerified: boolean("email_verified").notNull().default(false),
+    image: text(),
     createdAt,
     updatedAt,
   },
   (table) => [uniqueIndex("users_email_uq").on(table.email)],
+);
+
+export const sessions = mysqlTable(
+  "sessions",
+  {
+    id: int().primaryKey().autoincrement(),
+    userId: int("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    token: varchar({ length: 255 }).notNull(),
+    expiresAt: timestamp("expires_at", { mode: "date" }).notNull(),
+    ipAddress: text("ip_address"),
+    userAgent: text("user_agent"),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    uniqueIndex("sessions_token_uq").on(table.token),
+    index("sessions_user_idx").on(table.userId),
+  ],
+);
+
+/** Login methods per user. Email/password lives here with providerId "credential". */
+export const accounts = mysqlTable(
+  "accounts",
+  {
+    id: int().primaryKey().autoincrement(),
+    userId: int("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    accountId: varchar("account_id", { length: 255 }).notNull(),
+    providerId: varchar("provider_id", { length: 64 }).notNull(),
+    password: text(),
+    accessToken: text("access_token"),
+    refreshToken: text("refresh_token"),
+    idToken: text("id_token"),
+    accessTokenExpiresAt: timestamp("access_token_expires_at", { mode: "date" }),
+    refreshTokenExpiresAt: timestamp("refresh_token_expires_at", { mode: "date" }),
+    scope: text(),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [index("accounts_user_idx").on(table.userId)],
+);
+
+export const verifications = mysqlTable(
+  "verifications",
+  {
+    id: int().primaryKey().autoincrement(),
+    identifier: varchar({ length: 255 }).notNull(),
+    value: text().notNull(),
+    expiresAt: timestamp("expires_at", { mode: "date" }).notNull(),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [index("verifications_identifier_idx").on(table.identifier)],
 );
 
 export const muscleGroups = [
@@ -149,9 +213,19 @@ export const sessionSets = mysqlTable(
 );
 
 export const usersRelations = relations(users, ({ many }) => ({
+  sessions: many(sessions),
+  accounts: many(accounts),
   exercises: many(exercises),
   routines: many(routines),
-  sessions: many(workoutSessions),
+  workoutSessions: many(workoutSessions),
+}));
+
+export const sessionsRelations = relations(sessions, ({ one }) => ({
+  user: one(users, { fields: [sessions.userId], references: [users.id] }),
+}));
+
+export const accountsRelations = relations(accounts, ({ one }) => ({
+  user: one(users, { fields: [accounts.userId], references: [users.id] }),
 }));
 
 export const exercisesRelations = relations(exercises, ({ one, many }) => ({
