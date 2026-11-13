@@ -8,12 +8,11 @@ import { routineRepository } from "@/modules/routines/ui/routine-service";
 import { previewRoutineUpdate } from "../application/finish-workout-use-cases";
 import {
   getActiveSession,
-  getLastPerformance,
+  getLastPerformances,
   getSession,
   listHistory,
 } from "../application/session-use-cases";
 import { describeRoutineChange } from "../domain/routine-changes";
-import type { LoggedSet } from "../domain/session";
 import { DrizzleSessionRepository } from "../infrastructure/drizzle-session-repository";
 import { DrizzleSessionUnitOfWork } from "../infrastructure/drizzle-session-unit-of-work";
 import {
@@ -60,11 +59,10 @@ export async function loadActiveSession() {
     session.routineId === null ? null : getRoutine(routineRepository, user.id, session.routineId),
     exerciseRefs(user.id),
   ]);
-  const performances = await Promise.all(
-    exercises.map(async (e) => [e.id, await getLastPerformance(sessionRepository, user.id, e.id)] as const),
-  );
-  const lastPerformance = new Map(
-    performances.filter((entry): entry is readonly [number, LoggedSet] => entry[1] !== null),
+  const lastPerformance = await getLastPerformances(
+    sessionRepository,
+    user.id,
+    exercises.map((e) => e.id),
   );
   return buildActiveSessionView(session, routine, exercises, lastPerformance);
 }

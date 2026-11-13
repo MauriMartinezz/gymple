@@ -60,9 +60,9 @@ export function getSession(repo: SessionRepository, userId: number, id: number) 
   return repo.findById(userId, id);
 }
 
-/** For prefilling a set: the last set of the exercise in the latest finished session. */
-export function getLastPerformance(repo: SessionRepository, userId: number, exerciseId: number) {
-  return repo.lastPerformance(userId, exerciseId);
+/** For prefilling sets: each exercise's last set in the latest finished session that logged it. */
+export function getLastPerformances(repo: SessionRepository, userId: number, exerciseIds: readonly number[]) {
+  return repo.lastPerformances(userId, exerciseIds);
 }
 
 export async function startSession(

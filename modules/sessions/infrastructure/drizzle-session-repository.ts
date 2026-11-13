@@ -180,21 +180,28 @@ export class DrizzleSessionRepository implements SessionRepository {
     return result.affectedRows > 0;
   }
 
-  async lastPerformance(userId: number, exerciseId: number): Promise<LoggedSet | null> {
-    const [row] = await this.db
-      .select(setColumns)
+  async lastPerformances(userId: number, exerciseIds: readonly number[]): Promise<Map<number, LoggedSet>> {
+    if (exerciseIds.length === 0) return new Map();
+    // One query for every exercise: rank each exercise's sets newest first and keep the top one.
+    const ranked = this.db
+      .select({
+        ...setColumns,
+        rank: sql<number>`row_number() over (partition by ${sessionSets.exerciseId} order by ${workoutSessions.startedAt} desc, ${workoutSessions.id} desc, ${sessionSets.setNumber} desc)`.as(
+          "rank",
+        ),
+      })
       .from(sessionSets)
       .innerJoin(workoutSessions, eq(workoutSessions.id, sessionSets.sessionId))
       .where(
         and(
           eq(workoutSessions.userId, userId),
           isNotNull(workoutSessions.finishedAt),
-          eq(sessionSets.exerciseId, exerciseId),
+          inArray(sessionSets.exerciseId, [...exerciseIds]),
         ),
       )
-      .orderBy(desc(workoutSessions.startedAt), desc(workoutSessions.id), desc(sessionSets.setNumber))
-      .limit(1);
-    return row ? toLoggedSet(row) : null;
+      .as("ranked");
+    const rows = await this.db.select().from(ranked).where(eq(ranked.rank, 1));
+    return new Map(rows.map((row) => [row.exerciseId, toLoggedSet(row)]));
   }
 }
 

@@ -50,10 +50,11 @@ export interface SessionRepository {
   /** Deletes a finished session and its sets. Returns false otherwise. */
   deleteFinished(userId: number, sessionId: number): Promise<boolean>;
   /**
-   * The last set (highest number) of the exercise in the most recent finished
-   * session that logged it, in listFinished order. Active sessions are ignored.
+   * For each given exercise, its last set (highest number) in the most recent
+   * finished session that logged it, in listFinished order, keyed by exercise
+   * id. Active sessions are ignored; exercises never logged are absent.
    */
-  lastPerformance(userId: number, exerciseId: number): Promise<LoggedSet | null>;
+  lastPerformances(userId: number, exerciseIds: readonly number[]): Promise<Map<number, LoggedSet>>;
 }
 
 /** The user already has an unfinished session. */

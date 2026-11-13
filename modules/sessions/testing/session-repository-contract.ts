@@ -63,6 +63,11 @@ export function describeSessionRepositoryContract(name: string, setup: () => Pro
       return finished;
     }
 
+    /** One exercise's entry of the batched lookup, or null. */
+    async function lastOf(userId: number, exerciseId: number) {
+      return (await repo.lastPerformances(userId, [exerciseId])).get(exerciseId) ?? null;
+    }
+
     beforeEach(async () => {
       f = await setup();
       ({ repo, alice, bob } = f);
@@ -326,7 +331,7 @@ export function describeSessionRepositoryContract(name: string, setup: () => Pro
         expect(await repo.deleteFinished(alice, finished.id)).toBe(true);
         expect(await repo.findById(alice, finished.id)).toBeNull();
         expect(await repo.listFinished(alice)).toEqual([]);
-        expect(await repo.lastPerformance(alice, first)).toBeNull();
+        expect(await lastOf(alice, first)).toBeNull();
       });
 
       it("does not delete an active or missing session through deleteFinished", async () => {
@@ -358,7 +363,7 @@ export function describeSessionRepositoryContract(name: string, setup: () => Pro
         const active = await repo.start(alice, null);
         await repo.addSet(alice, active.id, first, set({ weightKg: 100 }));
 
-        expect(await repo.lastPerformance(alice, first)).toMatchObject({
+        expect(await lastOf(alice, first)).toMatchObject({
           exerciseId: first,
           setNumber: 2,
           weightKg: 85,
@@ -367,12 +372,24 @@ export function describeSessionRepositoryContract(name: string, setup: () => Pro
         });
       });
 
+      it("returns the last performance of several exercises at once, skipping unlogged ones", async () => {
+        await finishedSession(alice, [[first, set({ weightKg: 70 })], [second, set({ weightKg: 20 })]]);
+        await finishedSession(alice, [[first, set({ weightKg: 80 })], [first, set({ weightKg: 85 })]]);
+
+        const result = await repo.lastPerformances(alice, [first, second, f.aliceExercises.archived, f.missingExercise, first]);
+
+        expect([...result.keys()].sort((a, b) => a - b)).toEqual([first, second].sort((a, b) => a - b));
+        expect(result.get(first)).toMatchObject({ exerciseId: first, setNumber: 2, weightKg: 85 });
+        expect(result.get(second)).toMatchObject({ exerciseId: second, setNumber: 1, weightKg: 20 });
+        expect(await repo.lastPerformances(alice, [])).toEqual(new Map());
+      });
+
       it("returns null when the exercise was never logged in a finished session", async () => {
         const active = await repo.start(alice, null);
         await repo.addSet(alice, active.id, first, set());
 
-        expect(await repo.lastPerformance(alice, first)).toBeNull();
-        expect(await repo.lastPerformance(alice, f.missingExercise)).toBeNull();
+        expect(await lastOf(alice, first)).toBeNull();
+        expect(await lastOf(alice, f.missingExercise)).toBeNull();
       });
     });
 
@@ -385,7 +402,7 @@ export function describeSessionRepositoryContract(name: string, setup: () => Pro
         expect(await repo.findById(alice, bobsActive.id)).toBeNull();
         expect(await repo.findActive(alice)).toBeNull();
         expect(await repo.listFinished(alice)).toEqual([]);
-        expect(await repo.lastPerformance(alice, f.bobExercise)).toBeNull();
+        expect(await lastOf(alice, f.bobExercise)).toBeNull();
       });
 
       it("cannot change another user's sessions or sets", async () => {

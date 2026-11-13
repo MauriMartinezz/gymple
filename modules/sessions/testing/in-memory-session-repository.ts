@@ -132,15 +132,18 @@ export class InMemorySessionRepository implements SessionRepository {
     return this.remove(userId, sessionId, { finished: true });
   }
 
-  async lastPerformance(userId: number, exerciseId: number): Promise<LoggedSet | null> {
-    for (const row of this.finishedRows(userId)) {
-      const sets = row.sets.filter((s) => s.exerciseId === exerciseId);
-      if (sets.length > 0) {
-        const last = sets.reduce((a, b) => (b.setNumber > a.setNumber ? b : a));
-        return { ...last };
+  async lastPerformances(userId: number, exerciseIds: readonly number[]): Promise<Map<number, LoggedSet>> {
+    const found = new Map<number, LoggedSet>();
+    for (const exerciseId of new Set(exerciseIds)) {
+      // Rows come newest first: the first session that logged it wins.
+      for (const row of this.finishedRows(userId)) {
+        const sets = row.sets.filter((s) => s.exerciseId === exerciseId);
+        if (sets.length === 0) continue;
+        found.set(exerciseId, { ...sets.reduce((a, b) => (b.setNumber > a.setNumber ? b : a)) });
+        break;
       }
     }
-    return null;
+    return found;
   }
 
   private find(userId: number, id: number) {

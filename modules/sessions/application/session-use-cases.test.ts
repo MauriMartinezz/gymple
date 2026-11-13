@@ -8,7 +8,7 @@ import {
   editSet,
   finishSession,
   getActiveSession,
-  getLastPerformance,
+  getLastPerformances,
   getSession,
   listHistory,
   logSet,
@@ -302,7 +302,7 @@ describe("queries", () => {
     const active = await startOrFail(ALICE);
     await logSet(repo, ALICE, active.id, SQUAT, raw({ weightKg: "100" }));
 
-    expect(await getLastPerformance(repo, ALICE, SQUAT)).toMatchObject({ weightKg: 80, reps: 8 });
-    expect(await getLastPerformance(repo, BOB, SQUAT)).toBeNull();
+    expect((await getLastPerformances(repo, ALICE, [SQUAT])).get(SQUAT)).toMatchObject({ weightKg: 80, reps: 8 });
+    expect(await getLastPerformances(repo, BOB, [SQUAT])).toEqual(new Map());
   });
 });
