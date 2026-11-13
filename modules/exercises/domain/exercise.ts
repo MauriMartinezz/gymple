@@ -69,7 +69,8 @@ export function validateExerciseInput(raw: RawExerciseInput): ValidationResult {
   const muscleGroup = asText(raw.muscleGroup);
   if (!isMuscleGroup(muscleGroup)) errors.muscleGroup = "Choose a muscle group.";
 
-  const notes = asText(raw.notes);
+  // Browsers submit line breaks as CRLF but count them as one character.
+  const notes = asText(raw.notes).replace(/\r\n?/g, "\n");
   if (notes.length > EXERCISE_NOTES_MAX) {
     errors.notes = `Notes must be at most ${EXERCISE_NOTES_MAX} characters.`;
   }

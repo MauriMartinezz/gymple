@@ -56,6 +56,16 @@ describe("validateExerciseInput", () => {
     });
   });
 
+  it("counts a CRLF line break (as browsers submit them) as one character", () => {
+    const line = "a".repeat(99);
+    const notes = Array(10).fill(line).join("\r\n"); // 990 chars + 9 line breaks = 999
+
+    expect(validateExerciseInput({ name: "Curl", muscleGroup: "biceps", notes })).toEqual({
+      ok: true,
+      value: { name: "Curl", muscleGroup: "biceps", notes: Array(10).fill(line).join("\n") },
+    });
+  });
+
   it("reports every invalid field at once", () => {
     const result = validateExerciseInput({ name: "", muscleGroup: "" });
     expect(result).toEqual({

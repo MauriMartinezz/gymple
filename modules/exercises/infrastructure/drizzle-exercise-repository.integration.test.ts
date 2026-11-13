@@ -9,6 +9,10 @@ import { DrizzleExerciseRepository } from "./drizzle-exercise-repository";
 // Runs against a real, disposable MySQL database (see `pnpm test:integration`).
 const url = process.env.TEST_DATABASE_URL;
 if (!url) throw new Error("TEST_DATABASE_URL is not set.");
+// Setup deletes every user: refuse anything that is not a test database.
+if (!new URL(url).pathname.replace(/^\//, "").endsWith("_test")) {
+  throw new Error(`Refusing to run integration tests against "${url}": the database name must end in _test.`);
+}
 
 const pool = mysql.createPool({ uri: url, connectionLimit: 4 });
 const db = drizzle({ client: pool, schema, mode: "default" });
