@@ -2,9 +2,9 @@ import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { migrate } from "drizzle-orm/mysql2/migrator";
 import mysql from "mysql2/promise";
-import { afterAll, beforeAll } from "vitest";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import * as schema from "@/infrastructure/db/schema";
-import { describeRoutineRepositoryContract } from "../testing/routine-repository-contract";
+import { describeRoutineRepositoryContract, type ContractFixture } from "../testing/routine-repository-contract";
 import { DrizzleRoutineRepository } from "./drizzle-routine-repository";
 
 // Runs against a real, disposable MySQL database (see `pnpm test:integration`).
@@ -31,7 +31,36 @@ afterAll(async () => {
   await pool.end();
 });
 
-describeRoutineRepositoryContract("MySQL (Drizzle)", async () => {
+describeRoutineRepositoryContract("MySQL (Drizzle)", seed);
+
+describe("DrizzleRoutineRepository atomicity", () => {
+  it("keeps the previous name and items when an update fails after deleting them", async () => {
+    const { repo, alice, aliceExercises } = await seed();
+    const item = {
+      exerciseId: aliceExercises[0],
+      targetSets: 3,
+      targetRepsMin: 8,
+      targetRepsMax: 12,
+      restSeconds: 90,
+      notes: null,
+    };
+    const routine = await repo.create(alice, { name: "Push day", description: null, items: [item] });
+
+    // 70000 overflows the smallint column, so the insert that follows the
+    // delete of the old items fails mid-transaction.
+    await expect(
+      repo.update(alice, routine.id, {
+        name: "Renamed",
+        description: null,
+        items: [{ ...item, targetSets: 70_000 }],
+      }),
+    ).rejects.toThrow();
+
+    expect(await repo.findById(alice, routine.id)).toEqual(routine);
+  });
+});
+
+async function seed(): Promise<ContractFixture> {
   await deleteRoutines();
   await db.delete(schema.users); // cascades to exercises
   const [alice] = await db.insert(schema.users).values({ email: "alice@test.dev", name: "Alice" }).$returningId();
@@ -51,4 +80,4 @@ describeRoutineRepositoryContract("MySQL (Drizzle)", async () => {
     bobExercise: bobExercise.id,
     missingExercise: bobExercise.id + 1_000_000,
   };
-});
+}
