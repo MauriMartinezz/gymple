@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { StartSessionButton } from "@/modules/sessions/ui/start-session-button";
 import { buttonClass } from "@/shared/ui/styles";
 import type { Routine } from "../domain/routine";
 import { archiveRoutineAction, restoreRoutineAction } from "./actions";
@@ -29,6 +30,12 @@ export function RoutineList({ active, archived }: RoutineListProps) {
                 <p className="truncate font-medium text-fg">{routine.name}</p>
                 <ExerciseCount routine={routine} />
               </div>
+              <StartSessionButton
+                routineId={routine.id}
+                label="Start"
+                ariaLabel={`Start ${routine.name}`}
+                size="sm"
+              />
               <Link
                 href={`/routines/${routine.id}/edit`}
                 className={buttonClass("ghost", "sm")}

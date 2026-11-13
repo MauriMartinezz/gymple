@@ -7,6 +7,7 @@ import {
   loadRoutine,
   parseRoutineId,
 } from "@/modules/routines/ui/routine-service";
+import { StartSessionButton } from "@/modules/sessions/ui/start-session-button";
 
 export const metadata: Metadata = { title: "Edit routine · Gymple" };
 
@@ -20,7 +21,17 @@ export default async function EditRoutinePage({ params }: PageProps<"/routines/[
 
   return (
     <section className="mx-auto flex w-full max-w-2xl flex-col gap-6">
-      <h1 className="text-2xl font-semibold tracking-tight text-fg">Edit routine</h1>
+      <div className="flex items-start justify-between gap-4">
+        <h1 className="text-2xl font-semibold tracking-tight text-fg">Edit routine</h1>
+        {routine.archivedAt === null && (
+          <StartSessionButton
+            routineId={routine.id}
+            label="Start workout"
+            ariaLabel={`Start ${routine.name}`}
+            size="sm"
+          />
+        )}
+      </div>
       <div className="rounded-xl border border-border bg-surface p-4 sm:p-6">
         <RoutineForm
           action={updateRoutineAction.bind(null, routine.id)}

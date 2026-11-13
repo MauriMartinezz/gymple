@@ -20,6 +20,8 @@ const buttonVariants = {
   primary: "bg-primary text-on-primary hover:bg-primary-hover active:bg-primary-active",
   secondary: "border border-border-strong bg-surface text-fg hover:bg-surface-sunken",
   ghost: "text-fg-muted hover:bg-surface-sunken hover:text-fg",
+  /** Confirms a destructive action. */
+  danger: "border border-danger bg-danger-subtle text-on-danger-subtle hover:bg-danger hover:text-on-primary",
 } as const;
 
 const buttonSizes = {

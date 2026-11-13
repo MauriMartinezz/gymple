@@ -12,8 +12,8 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
   return (
     <div className="flex flex-1 flex-col">
       <header className="border-b border-border bg-surface">
-        <div className="mx-auto flex h-14 w-full max-w-3xl items-center justify-between px-4">
-          <nav className="flex items-center gap-5">
+        <div className="mx-auto flex min-h-14 w-full max-w-3xl flex-wrap items-center justify-between gap-x-4 gap-y-1 px-4 py-2">
+          <nav className="flex flex-wrap items-center gap-x-4 gap-y-1 sm:gap-x-5">
             <Link href="/" className="text-lg font-bold tracking-tight text-fg">
               Gym<span className="text-primary">ple</span>
             </Link>
@@ -22,6 +22,9 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
             </Link>
             <Link href="/routines" className="text-sm font-medium text-fg-muted hover:text-fg">
               Routines
+            </Link>
+            <Link href="/sessions" className="text-sm font-medium text-fg-muted hover:text-fg">
+              Workouts
             </Link>
           </nav>
           <Suspense fallback={null}>
