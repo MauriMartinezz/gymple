@@ -4,6 +4,8 @@ import { requireUser } from "@/modules/auth/infrastructure/session";
 import { getExercise, listExercises } from "../application/exercise-use-cases";
 import { DrizzleExerciseRepository } from "../infrastructure/drizzle-exercise-repository";
 
+export { parseExerciseId } from "./parse-exercise-id";
+
 /** Composition root: the one place that picks the MySQL adapter. */
 export const exerciseRepository = new DrizzleExerciseRepository(db);
 
@@ -16,10 +18,4 @@ export async function loadExercises() {
 export async function loadExercise(id: number) {
   const user = await requireUser();
   return getExercise(exerciseRepository, user.id, id);
-}
-
-/** Route and form ids arrive as strings; anything but a positive integer is "not found". */
-export function parseExerciseId(value: unknown): number | null {
-  const id = Number(value);
-  return Number.isSafeInteger(id) && id > 0 ? id : null;
 }

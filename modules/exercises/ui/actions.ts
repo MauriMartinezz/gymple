@@ -11,7 +11,8 @@ import {
   type ExerciseCommandResult,
 } from "../application/exercise-use-cases";
 import type { ExerciseErrors } from "../domain/exercise";
-import { exerciseRepository, parseExerciseId } from "./exercise-service";
+import { exerciseRepository } from "./exercise-service";
+import { parseExerciseId } from "./parse-exercise-id";
 
 export interface ExerciseFormValues {
   name: string;
