@@ -23,7 +23,7 @@ Objective: let users group exercises into reusable routines with target sets, re
 | ID | Specs | Route | Status | Evidence |
 |----|-------|-------|--------|----------|
 | T1 | S1, S2, S3, S4, S5, S8 | delegated (context backstop) | done (uncommitted) | RED: each of 3 test files failed with "Cannot find module" before its implementation; GREEN: 42 routines tests, `pnpm test` 136/136, tsc and lint clean |
-| T2 | S2, S3, S4, S8 | delegated (context backstop) | pending | — |
+| T2 | S2, S3, S4, S8 | delegated (context backstop) | done (uncommitted) | RED: integration test failed with "Cannot find module ./drizzle-routine-repository"; GREEN: `pnpm test:integration` 25/25 (14 routines), `pnpm test` 136/136, tsc and lint clean; mutations (ownership filter, exercise-ownership check) each failed the isolation/foreign-exercise cases |
 | T3 | S3, S6, S7, S8 | delegated (context backstop) | pending | — |
 
 - T1 — Domain + application: `modules/routines/domain` (types, validation, repository port with exercise-ownership check), `modules/routines/application` use cases, in-memory repository + contract suite in `modules/routines/testing`, unit tests.
@@ -36,3 +36,5 @@ Objective: let users group exercises into reusable routines with target sets, re
 - **L2** Route: all tasks delegated to one bounded writer each, sequentially, because the parent session passed the long-session context backstop. Tasks depend on each other, so no parallelism.
 - **L3** Reference implementation to mirror: `modules/exercises/**` (layers, contract suite, action tests, archive semantics), commits 3ffa39c..6716cc7 and bbbd8ac.
 - **L4** T1 done: `modules/routines/{domain,application,testing}`. Assumptions: `ROUTINE_ITEMS_MAX = 50` caps one submission; per-item errors live in `errors.itemErrors` (aligned with items, `undefined` when valid) and the list-level message in `errors.items`; archived exercises the user owns are accepted in items (S6). Contract fixture needs `aliceExercises` (second one archived), `bobExercise`, `missingExercise` from T2.
+- **L5** T2 done: `modules/routines/infrastructure`. create/update run in one transaction (update locks the routine row `FOR UPDATE`, returns null before the exercise check); list loads items for all routines in one query. Because `routine_exercises.exercise_id` is `restrict`, deleting users fails while routines exist, so the routines integration test deletes routines in setup and `afterAll` to keep the exercises integration setup working.
+- **L6** Follow-up (not in scope): `routine_exercises.exercise_id` and `session_sets.exercise_id` use ON DELETE RESTRICT, so deleting a user with routines fails (the user → exercises cascade is blocked). Matters once account deletion exists: delete routines/sessions before exercises in that flow, or revisit the FK rules.
