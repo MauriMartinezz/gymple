@@ -59,6 +59,12 @@ export class InMemoryExerciseRepository implements ExerciseRepository {
   }
 }
 
-function toExercise({ userId: _userId, ...exercise }: Exercise & { userId: number }): Exercise {
-  return { ...exercise };
+function toExercise(row: Exercise): Exercise {
+  return {
+    id: row.id,
+    name: row.name,
+    muscleGroup: row.muscleGroup,
+    notes: row.notes,
+    archivedAt: row.archivedAt,
+  };
 }
