@@ -1,5 +1,6 @@
 import { relations } from "drizzle-orm";
 import {
+  bigint,
   boolean,
   decimal,
   index,
@@ -101,6 +102,19 @@ export const verifications = mysqlTable(
     updatedAt,
   },
   (table) => [index("verifications_identifier_idx").on(table.identifier)],
+);
+
+/** Better Auth rate-limit counters, one row per IP + path. */
+export const rateLimits = mysqlTable(
+  "rate_limits",
+  {
+    id: int().primaryKey().autoincrement(),
+    key: varchar({ length: 255 }).notNull(),
+    count: int().notNull(),
+    // Epoch milliseconds, as Better Auth stores it.
+    lastRequest: bigint("last_request", { mode: "number" }).notNull(),
+  },
+  (table) => [uniqueIndex("rate_limits_key_uq").on(table.key)],
 );
 
 export const muscleGroups = [

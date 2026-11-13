@@ -1,9 +1,8 @@
 "use client";
 
-import { useActionState } from "react";
-import { signIn, type SignInState } from "./actions";
-
-const initialState: SignInState = { error: null, email: "" };
+import { useRouter } from "next/navigation";
+import { useState, type FormEvent } from "react";
+import { authClient } from "./auth-client";
 
 const inputClass =
   "h-11 w-full rounded-md border border-border-strong bg-surface px-3 text-base text-fg " +
@@ -11,12 +10,47 @@ const inputClass =
   "focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/30 " +
   "aria-invalid:border-danger";
 
+// Signs in through the HTTP API (not a server action) so Better Auth's
+// rate limiter applies: there is a single sign-in path to protect.
 export function LoginForm() {
-  const [state, formAction, pending] = useActionState(signIn, initialState);
-  const hasError = Boolean(state.error);
+  const router = useRouter();
+  const [error, setError] = useState<string | null>(null);
+  const [pending, setPending] = useState(false);
+  const hasError = Boolean(error);
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    setPending(true);
+    setError(null);
+
+    let retryAfterSeconds: number | null = null;
+    const { error: signInError } = await authClient.signIn.email(
+      {
+        email: String(form.get("email") ?? "").trim(),
+        password: String(form.get("password") ?? ""),
+      },
+      {
+        onError: ({ response }) => {
+          if (response.status === 429) {
+            retryAfterSeconds = Number(response.headers.get("X-Retry-After")) || null;
+          }
+        },
+      },
+    );
+
+    if (signInError) {
+      setPending(false);
+      setError(errorMessage(signInError.status, retryAfterSeconds));
+      return;
+    }
+
+    router.replace("/");
+    router.refresh();
+  }
 
   return (
-    <form action={formAction} className="flex flex-col gap-5" noValidate>
+    <form onSubmit={handleSubmit} className="flex flex-col gap-5" noValidate>
       <div className="flex flex-col gap-1.5">
         <label htmlFor="email" className="text-sm font-medium text-fg">
           Email
@@ -27,7 +61,6 @@ export function LoginForm() {
           type="email"
           autoComplete="email"
           required
-          defaultValue={state.email}
           aria-invalid={hasError || undefined}
           aria-describedby={hasError ? "login-error" : undefined}
           className={inputClass}
@@ -56,7 +89,7 @@ export function LoginForm() {
           role="alert"
           className="rounded-md bg-danger-subtle px-3 py-2 text-sm text-on-danger-subtle"
         >
-          {state.error}
+          {error}
         </p>
       )}
 
@@ -69,4 +102,15 @@ export function LoginForm() {
       </button>
     </form>
   );
+}
+
+function errorMessage(status: number, retryAfterSeconds: number | null): string {
+  if (status === 429) {
+    if (!retryAfterSeconds) return "Too many sign-in attempts. Please try again later.";
+    const minutes = Math.ceil(retryAfterSeconds / 60);
+    return `Too many sign-in attempts. Try again in ${minutes} minute${minutes === 1 ? "" : "s"}.`;
+  }
+  // Same message for unknown email and wrong password: don't reveal which accounts exist.
+  if (status === 401) return "Invalid email or password.";
+  return "Something went wrong. Please try again.";
 }
