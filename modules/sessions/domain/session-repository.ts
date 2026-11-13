@@ -37,6 +37,7 @@ export interface SessionRepository {
   /**
    * Deletes a set (active or finished session) and renumbers the later sets
    * of the same exercise so numbers stay 1..n. Returns false when missing.
+   * A finished session keeps at least one set. @throws LastSetOfFinishedSessionError
    */
   deleteSet(userId: number, sessionId: number, setId: number): Promise<boolean>;
   /**
@@ -87,5 +88,13 @@ export class EmptySessionError extends Error {
   constructor(readonly sessionId: number) {
     super(`Session ${sessionId} has no sets.`);
     this.name = "EmptySessionError";
+  }
+}
+
+/** A finished session keeps at least one set; delete the whole session instead. */
+export class LastSetOfFinishedSessionError extends Error {
+  constructor(readonly sessionId: number) {
+    super(`Session ${sessionId} is finished and this is its last set.`);
+    this.name = "LastSetOfFinishedSessionError";
   }
 }

@@ -3,6 +3,7 @@ import {
   ActiveSessionExistsError,
   EmptySessionError,
   ExerciseNotAllowedError,
+  LastSetOfFinishedSessionError,
   UnknownRoutineError,
   type SessionRepository,
 } from "../domain/session-repository";
@@ -106,6 +107,7 @@ export class InMemorySessionRepository implements SessionRepository {
     const row = this.find(userId, sessionId);
     const set = row?.sets.find((s) => s.id === setId);
     if (!row || !set) return false;
+    if (row.finishedAt !== null && row.sets.length === 1) throw new LastSetOfFinishedSessionError(sessionId);
     row.sets = row.sets.filter((s) => s.id !== setId);
     for (const other of row.sets) {
       if (other.exerciseId === set.exerciseId && other.setNumber > set.setNumber) other.setNumber -= 1;

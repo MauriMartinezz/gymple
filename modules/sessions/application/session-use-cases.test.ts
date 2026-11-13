@@ -178,7 +178,7 @@ describe("editSet and deleteSet", () => {
     if (!logged.ok) throw new Error("setup failed");
 
     expect(await editSet(repo, ALICE, bobs.id, logged.set.id, raw({ reps: "1" }))).toEqual({ ok: false, reason: "not_found" });
-    expect(await deleteSet(repo, ALICE, bobs.id, logged.set.id)).toBe(false);
+    expect(await deleteSet(repo, ALICE, bobs.id, logged.set.id)).toEqual({ ok: false, reason: "not_found" });
     expect((await getSession(repo, BOB, bobs.id))?.sets).toEqual([logged.set]);
   });
 
@@ -187,8 +187,30 @@ describe("editSet and deleteSet", () => {
     const logged = await logSet(repo, ALICE, session.id, SQUAT, raw());
     if (!logged.ok) throw new Error("setup failed");
 
-    expect(await deleteSet(repo, ALICE, session.id, logged.set.id)).toBe(true);
+    expect(await deleteSet(repo, ALICE, session.id, logged.set.id)).toEqual({ ok: true });
     expect((await getSession(repo, ALICE, session.id))?.sets).toEqual([]);
+  });
+
+  it("deletes a set of a finished session that has others", async () => {
+    const session = await startOrFail(ALICE);
+    await logSet(repo, ALICE, session.id, SQUAT, raw());
+    const second = await logSet(repo, ALICE, session.id, SQUAT, raw({ reps: "6" }));
+    if (!second.ok) throw new Error("setup failed");
+    await finishSession(repo, ALICE, session.id, "");
+
+    expect(await deleteSet(repo, ALICE, session.id, second.set.id)).toEqual({ ok: true });
+    expect((await getSession(repo, ALICE, session.id))?.sets).toHaveLength(1);
+  });
+
+  it("refuses to delete the last set of a finished session", async () => {
+    const finished = await finishedWorkout(ALICE, SQUAT);
+
+    expect(await deleteSet(repo, ALICE, finished.id, finished.sets[0].id)).toEqual({
+      ok: false,
+      reason: "last_set",
+      error: "Delete the whole workout instead.",
+    });
+    expect(await getSession(repo, ALICE, finished.id)).toEqual(finished);
   });
 });
 

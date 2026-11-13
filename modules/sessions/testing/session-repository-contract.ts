@@ -4,6 +4,7 @@ import {
   ActiveSessionExistsError,
   EmptySessionError,
   ExerciseNotAllowedError,
+  LastSetOfFinishedSessionError,
   UnknownRoutineError,
   type SessionRepository,
 } from "../domain/session-repository";
@@ -226,6 +227,23 @@ export function describeSessionRepositoryContract(name: string, setup: () => Pro
         expect(await repo.updateSet(alice, finished.id, one.id, set({ reps: 10 }))).toMatchObject({ reps: 10 });
         expect(await repo.deleteSet(alice, finished.id, two.id)).toBe(true);
         expect((await repo.findById(alice, finished.id))?.sets).toEqual([{ ...one, reps: 10 }]);
+      });
+
+      it("refuses to delete the last set of a finished session and keeps it", async () => {
+        const finished = await finishedSession(alice, [[first, set()]]);
+
+        await expect(repo.deleteSet(alice, finished.id, finished.sets[0].id)).rejects.toBeInstanceOf(
+          LastSetOfFinishedSessionError,
+        );
+        expect(await repo.findById(alice, finished.id)).toEqual(finished);
+      });
+
+      it("deletes the last set of an active session", async () => {
+        const session = await repo.start(alice, null);
+        const only = await repo.addSet(alice, session.id, first, set());
+
+        expect(await repo.deleteSet(alice, session.id, only!.id)).toBe(true);
+        expect((await repo.findById(alice, session.id))?.sets).toEqual([]);
       });
 
       it("does not add sets to a finished session", async () => {

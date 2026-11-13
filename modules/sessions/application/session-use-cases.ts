@@ -10,6 +10,7 @@ import {
   ActiveSessionExistsError,
   EmptySessionError,
   ExerciseNotAllowedError,
+  LastSetOfFinishedSessionError,
   UnknownRoutineError,
   type SessionRepository,
 } from "../domain/session-repository";
@@ -27,9 +28,17 @@ export type SetCommandResult =
   | { ok: false; reason: "invalid"; errors: SetCommandErrors }
   | { ok: false; reason: "not_found" };
 
+export type DeleteSetResult =
+  | { ok: true }
+  /** A finished session keeps at least one set. */
+  | { ok: false; reason: "last_set"; error: string }
+  | { ok: false; reason: "not_found" };
+
 export interface FinishSessionErrors {
   notes?: string;
   sets?: string;
+  /** Why the routine could not be updated with the session's additions. */
+  routine?: string;
 }
 
 export type FinishSessionResult =
@@ -112,8 +121,20 @@ export async function editSet(
   return set ? { ok: true, set } : { ok: false, reason: "not_found" };
 }
 
-export function deleteSet(repo: SessionRepository, userId: number, sessionId: number, setId: number) {
-  return repo.deleteSet(userId, sessionId, setId);
+export async function deleteSet(
+  repo: SessionRepository,
+  userId: number,
+  sessionId: number,
+  setId: number,
+): Promise<DeleteSetResult> {
+  try {
+    return (await repo.deleteSet(userId, sessionId, setId)) ? { ok: true } : { ok: false, reason: "not_found" };
+  } catch (error) {
+    if (error instanceof LastSetOfFinishedSessionError) {
+      return { ok: false, reason: "last_set", error: "Delete the whole workout instead." };
+    }
+    throw error;
+  }
 }
 
 export async function finishSession(

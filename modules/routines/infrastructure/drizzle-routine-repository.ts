@@ -26,7 +26,8 @@ const itemColumns = {
 };
 
 export class DrizzleRoutineRepository implements RoutineRepository {
-  constructor(private readonly db: Db) {}
+  /** Takes the database, or an open transaction to join it (its own transactions become savepoints). */
+  constructor(private readonly db: Executor) {}
 
   async list(userId: number, { archived }: { archived: boolean }): Promise<Routine[]> {
     const rows = await this.db

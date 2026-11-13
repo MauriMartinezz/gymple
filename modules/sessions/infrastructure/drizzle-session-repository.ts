@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gt, inArray, isNotNull, isNull, max, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, isNotNull, isNull, max, ne, sql } from "drizzle-orm";
 import type { Db } from "@/infrastructure/db/client";
 import { exercises, routines, sessionSets, users, workoutSessions } from "@/infrastructure/db/schema";
 import type { LoggedSet, SetInput, WorkoutSession } from "../domain/session";
@@ -6,6 +6,7 @@ import {
   ActiveSessionExistsError,
   EmptySessionError,
   ExerciseNotAllowedError,
+  LastSetOfFinishedSessionError,
   UnknownRoutineError,
   type SessionRepository,
 } from "../domain/session-repository";
@@ -39,7 +40,8 @@ type SessionRow = Omit<WorkoutSession, "sets">;
 type SetRow = Omit<LoggedSet, "weightKg" | "rpe"> & { sessionId: number; weightKg: string; rpe: string | null };
 
 export class DrizzleSessionRepository implements SessionRepository {
-  constructor(private readonly db: Db) {}
+  /** Takes the database, or an open transaction to join it (its own transactions become savepoints). */
+  constructor(private readonly db: Executor) {}
 
   async findActive(userId: number): Promise<WorkoutSession | null> {
     const rows = await this.db
@@ -118,9 +120,18 @@ export class DrizzleSessionRepository implements SessionRepository {
 
   async deleteSet(userId: number, sessionId: number, setId: number): Promise<boolean> {
     return this.db.transaction(async (tx) => {
-      if (!(await lockOwned(tx, userId, sessionId))) return false;
+      const session = await lockOwned(tx, userId, sessionId);
+      if (!session) return false;
       const deleted = await findSet(tx, sessionId, setId);
       if (!deleted) return false;
+      if (session.finishedAt !== null) {
+        const [other] = await tx
+          .select({ id: sessionSets.id })
+          .from(sessionSets)
+          .where(and(eq(sessionSets.sessionId, sessionId), ne(sessionSets.id, setId)))
+          .limit(1);
+        if (!other) throw new LastSetOfFinishedSessionError(sessionId);
+      }
       await tx.delete(sessionSets).where(inSession(sessionId, setId));
       // Close the gap so the exercise's numbers stay 1..n.
       await tx
