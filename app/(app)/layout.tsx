@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Suspense } from "react";
 import { requireUser } from "@/modules/auth/infrastructure/session";
 import { SignOutButton } from "@/modules/auth/ui/sign-out-button";
@@ -12,9 +13,14 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
     <div className="flex flex-1 flex-col">
       <header className="border-b border-border bg-surface">
         <div className="mx-auto flex h-14 w-full max-w-3xl items-center justify-between px-4">
-          <span className="text-lg font-bold tracking-tight text-fg">
-            Gym<span className="text-primary">ple</span>
-          </span>
+          <nav className="flex items-center gap-5">
+            <Link href="/" className="text-lg font-bold tracking-tight text-fg">
+              Gym<span className="text-primary">ple</span>
+            </Link>
+            <Link href="/exercises" className="text-sm font-medium text-fg-muted hover:text-fg">
+              Exercises
+            </Link>
+          </nav>
           <Suspense fallback={null}>
             <UserMenu />
           </Suspense>

@@ -2,13 +2,8 @@
 
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
+import { buttonClass, inputClass, labelClass } from "@/shared/ui/styles";
 import { authClient } from "./auth-client";
-
-const inputClass =
-  "h-11 w-full rounded-md border border-border-strong bg-surface px-3 text-base text-fg " +
-  "placeholder:text-fg-subtle transition-colors duration-(--duration-fast) " +
-  "focus:border-primary focus:outline-none focus:ring-2 focus:ring-ring/30 " +
-  "aria-invalid:border-danger";
 
 // Signs in through the HTTP API (not a server action) so Better Auth's
 // rate limiter applies: there is a single sign-in path to protect.
@@ -52,7 +47,7 @@ export function LoginForm() {
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-5" noValidate>
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="email" className="text-sm font-medium text-fg">
+        <label htmlFor="email" className={labelClass}>
           Email
         </label>
         <input
@@ -68,7 +63,7 @@ export function LoginForm() {
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="password" className="text-sm font-medium text-fg">
+        <label htmlFor="password" className={labelClass}>
           Password
         </label>
         <input
@@ -96,7 +91,7 @@ export function LoginForm() {
       <button
         type="submit"
         disabled={pending}
-        className="h-11 rounded-md bg-primary px-4 text-base font-semibold text-on-primary transition-colors duration-(--duration-fast) hover:bg-primary-hover active:bg-primary-active disabled:cursor-not-allowed disabled:opacity-60"
+        className={buttonClass("primary")}
       >
         {pending ? "Signing in…" : "Sign in"}
       </button>
