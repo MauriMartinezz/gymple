@@ -34,7 +34,7 @@ export function DeleteGuestDataButton() {
   return (
     <div role="alertdialog" aria-labelledby="delete-guest-data-title" className="flex flex-wrap items-center gap-2">
       <p id="delete-guest-data-title" className="text-sm text-fg">
-        Delete all guest exercises and routines from this browser? This cannot be undone.
+        Delete all guest exercises, routines and workouts from this browser? This cannot be undone.
       </p>
       <button type="button" onClick={confirm} className={buttonClass("danger", "sm")}>
         Delete everything
