@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { isCurrentUserAdmin, requireUser } from "@/modules/auth/infrastructure/session";
 import { SignOutButton } from "@/modules/auth/ui/sign-out-button";
+import { isCurrentUserActiveTrainer } from "@/modules/coaching/ui/coaching-service";
 
 /*
  * Every route in this group requires a signed-in user.
@@ -26,6 +27,12 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
             <Link href="/sessions" className="text-sm font-medium text-fg-muted hover:text-fg">
               Workouts
             </Link>
+            <Link href="/trainers" className="text-sm font-medium text-fg-muted hover:text-fg">
+              Trainers
+            </Link>
+            <Suspense fallback={null}>
+              <StudentsLink />
+            </Suspense>
             <Suspense fallback={null}>
               <AdminLink />
             </Suspense>
@@ -65,6 +72,16 @@ async function AdminLink() {
   return (
     <Link href="/admin" className="text-sm font-medium text-fg-muted hover:text-fg">
       Admin
+    </Link>
+  );
+}
+
+/** Only active trainers see the link; the students pages check it again on the server. */
+async function StudentsLink() {
+  if (!(await isCurrentUserActiveTrainer())) return null;
+  return (
+    <Link href="/students" className="text-sm font-medium text-fg-muted hover:text-fg">
+      Students
     </Link>
   );
 }

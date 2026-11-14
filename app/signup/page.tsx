@@ -4,34 +4,57 @@ import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { getCurrentUser } from "@/modules/auth/infrastructure/session";
 import { AuthCard } from "@/modules/auth/ui/auth-card";
+import { loginHref, safeReturnPath } from "@/modules/auth/ui/return-path";
 import { SignUpForm } from "@/modules/auth/ui/sign-up-form";
 
 export const metadata: Metadata = { title: "Create account · Gymple" };
 
-export default function SignUpPage() {
+type Next = Promise<string | null>;
+
+// `?next=` (same-origin paths only) is carried to sign-in, where it applies after verification.
+export default function SignUpPage({ searchParams }: PageProps<"/signup">) {
+  const next: Next = searchParams.then((params) => safeReturnPath(params.next));
   return (
     <main className="flex flex-1 items-center justify-center px-4 py-12">
       <Suspense fallback={null}>
-        <RedirectIfSignedIn />
+        <RedirectIfSignedIn next={next} />
       </Suspense>
       <AuthCard
         title="Create your account"
         footer={
           <>
             Already have an account?{" "}
-            <Link href="/login" className="font-medium text-primary hover:underline">
-              Sign in
-            </Link>
+            <Suspense fallback={<SignInLink next={null} />}>
+              <SignInLinkFor next={next} />
+            </Suspense>
           </>
         }
       >
-        <SignUpForm />
+        <Suspense fallback={<SignUpForm />}>
+          <SignUpFormFor next={next} />
+        </Suspense>
       </AuthCard>
     </main>
   );
 }
 
-async function RedirectIfSignedIn() {
-  if (await getCurrentUser()) redirect("/");
+async function RedirectIfSignedIn({ next }: { next: Next }) {
+  if (await getCurrentUser()) redirect((await next) ?? "/");
   return null;
+}
+
+async function SignUpFormFor({ next }: { next: Next }) {
+  return <SignUpForm next={await next} />;
+}
+
+async function SignInLinkFor({ next }: { next: Next }) {
+  return <SignInLink next={await next} />;
+}
+
+function SignInLink({ next }: { next: string | null }) {
+  return (
+    <Link href={loginHref(next)} className="font-medium text-primary hover:underline">
+      Sign in
+    </Link>
+  );
 }

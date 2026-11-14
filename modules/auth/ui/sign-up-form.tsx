@@ -5,11 +5,13 @@ import { useState, type FormEvent } from "react";
 import { buttonClass, fieldErrorClass, inputClass, labelClass } from "@/shared/ui/styles";
 import { authClient } from "./auth-client";
 import { signUpErrorMessage } from "./auth-error-message";
+import { loginHref } from "./return-path";
 import { parseSignUpInput, type SignUpErrors } from "./sign-up-input";
 
 // Signs up through the HTTP API (not a server action) so Better Auth's rate
 // limiter applies. No session is created: the user must verify the email first.
-export function SignUpForm() {
+// `next` (e.g. a trainer's /join link) is carried to the sign-in link.
+export function SignUpForm({ next = null }: { next?: string | null }) {
   const [fieldErrors, setFieldErrors] = useState<SignUpErrors>({});
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -45,7 +47,7 @@ export function SignUpForm() {
           We&apos;ve sent a verification link to <span className="font-medium text-fg">{sentTo}</span>.
           Open it to activate your account, then sign in.
         </p>
-        <Link href="/login" className={buttonClass("secondary")}>
+        <Link href={loginHref(next)} className={buttonClass("secondary")}>
           Go to sign in
         </Link>
       </div>

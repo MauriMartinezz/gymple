@@ -6,10 +6,13 @@ import { useState, type FormEvent } from "react";
 import { buttonClass, inputClass, labelClass } from "@/shared/ui/styles";
 import { authClient } from "./auth-client";
 import { signInErrorMessage } from "./auth-error-message";
+import { safeReturnPath } from "./return-path";
 
 // Signs in through the HTTP API (not a server action) so Better Auth's
 // rate limiter applies: there is a single sign-in path to protect.
-export function LoginForm() {
+// `next` is where to go afterwards (e.g. a trainer's /join link); it is
+// validated again here, so only same-origin paths are followed.
+export function LoginForm({ next = null }: { next?: string | null }) {
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
@@ -42,7 +45,7 @@ export function LoginForm() {
       return;
     }
 
-    router.replace("/");
+    router.replace(safeReturnPath(next) ?? "/");
     router.refresh();
   }
 

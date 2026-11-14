@@ -11,6 +11,7 @@ import {
   text,
   timestamp,
   uniqueIndex,
+  varbinary,
   varchar,
 } from "drizzle-orm/mysql-core";
 import { MUSCLE_GROUPS } from "../../modules/exercises/domain/exercise";
@@ -143,6 +144,51 @@ export const trainers = mysqlTable(
   (table) => [
     uniqueIndex("trainers_user_uq").on(table.userId),
     uniqueIndex("trainers_dni_uq").on(table.dni),
+  ],
+);
+
+/*
+ * Trainer–student links (S4): many-to-many, directed trainer → student. The
+ * table knows nothing about the trainer capability: while a trainer is
+ * revoked their links stay here, suspended, and the app checks the trainer
+ * status on every access (S7). Leaving or removing deletes the row.
+ */
+export const coachingLinks = mysqlTable(
+  "coaching_links",
+  {
+    id: int().primaryKey().autoincrement(),
+    trainerUserId: int("trainer_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    studentUserId: int("student_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt,
+  },
+  (table) => [
+    uniqueIndex("coaching_links_pair_uq").on(table.trainerUserId, table.studentUserId),
+    index("coaching_links_student_idx").on(table.studentUserId),
+  ],
+);
+
+/**
+ * A trainer's profile link code (`/join/<code>`). One per trainer; replacing
+ * it invalidates the old link. Binary, so codes compare byte for byte.
+ */
+export const trainerInviteCodes = mysqlTable(
+  "trainer_invite_codes",
+  {
+    id: int().primaryKey().autoincrement(),
+    trainerUserId: int("trainer_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    code: varbinary({ length: 32 }).notNull(),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    uniqueIndex("trainer_invite_codes_trainer_uq").on(table.trainerUserId),
+    uniqueIndex("trainer_invite_codes_code_uq").on(table.code),
   ],
 );
 

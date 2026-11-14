@@ -71,6 +71,29 @@ can have both.
 The trainer list shows active and revoked trainers, most recently certified
 first.
 
+### Trainers and students
+
+A user can have many trainers and a trainer many students; a trainer can also
+be another trainer's student, never their own.
+
+- **Students** (header link, active trainers only): the trainer's invite link
+  `/join/<code>` with a copy button, and **Get a new link**, which makes the
+  old link stop working. Below it, the students, newest first: open one to see
+  their finished workouts (history and detail, read-only), or **Remove** them.
+- **`/join/<code>`**: a signed-in user sees the trainer's name and confirms
+  **Join as student**; joining twice changes nothing. A signed-out visitor is
+  offered sign-in or sign-up and comes back to the link after signing in
+  (`/login?next=…` accepts same-origin paths only). A revoked trainer's link
+  says they are not accepting students.
+- **Trainers** (header link): the user's trainers, active or inactive, and
+  **Leave**.
+
+Trainers never see a student's active workout, routines editor, or anything
+of someone who is not their student. Revoking a trainer suspends their links:
+they see none of their students' data and cannot remove students, while
+students see them as inactive and can still leave. Restoring the trainer
+brings the links back.
+
 ### Choosing or resetting a password
 
 `/reset-password` is where the "choose your password" link lands (better-auth's
