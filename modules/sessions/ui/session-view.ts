@@ -22,6 +22,23 @@ export interface ExerciseTarget {
   restSeconds: number;
 }
 
+/** A trainer's load suggestion as the active workout uses it (S10). */
+export interface PrefillSuggestion {
+  trainerName: string;
+  weightKg: number;
+  reps: number;
+  sets: number | null;
+  note: string | null;
+}
+
+export interface SuggestionLine {
+  /** "Suggested by Ana: 85 kg × 6". */
+  text: string;
+  /** "4 sets", when the trainer gave a number of sets. */
+  sets: string | null;
+  note: string | null;
+}
+
 export interface ExerciseCard {
   exerciseId: number;
   name: string;
@@ -33,6 +50,8 @@ export interface ExerciseCard {
   prefill: SetPrefill;
   /** "Last time: 80 kg × 8", from the most recent finished workout. */
   lastTime: string | null;
+  /** The effective trainer suggestion for the exercise, if any. */
+  suggestion: SuggestionLine | null;
 }
 
 export interface ActiveSessionView {
@@ -82,7 +101,8 @@ export function formatDate(date: Date): string {
  * targets, then exercises added during the workout in the order first logged.
  *
  * Prefill: weight and reps of the exercise's last set in this workout, else
- * of its last set in the most recent finished workout. Rest comes from the
+ * of the effective trainer suggestion while the exercise has no sets in this
+ * workout, else of its last set in the most recent finished workout. Rest comes from the
  * occurrence the next set belongs to when that set starts it, else from the
  * last set, else from that occurrence's target.
  */
@@ -91,6 +111,7 @@ export function buildActiveSessionView(
   routine: Pick<Routine, "name" | "items"> | null,
   exercises: ExerciseRef[],
   lastPerformance: ReadonlyMap<number, LoggedSet>,
+  suggestions: ReadonlyMap<number, PrefillSuggestion> = new Map(),
 ): ActiveSessionView {
   const names = new Map(exercises.map((e) => [e.id, e.name]));
   const cards: ExerciseCard[] = [];
@@ -101,6 +122,7 @@ export function buildActiveSessionView(
     const previous = lastPerformance.get(exerciseId) ?? null;
     const next = nextTarget(targets, sets.length);
     const inSession = sets.at(-1) ?? null;
+    const suggestion = suggestions.get(exerciseId) ?? null;
     return {
       exerciseId,
       name: names.get(exerciseId) ?? "Unknown exercise",
@@ -109,11 +131,12 @@ export function buildActiveSessionView(
       sets,
       prefill: prefillFor(
         inSession,
-        previous,
+        suggestion ?? previous,
         // A set that starts a later occurrence takes that occurrence's rest, not the previous set's.
         (next?.startsOccurrence ? null : inSession?.restSeconds) ?? next?.target.restSeconds ?? null,
       ),
       lastTime: previous ? `Last time: ${formatSet(previous)}` : null,
+      suggestion: suggestion && suggestionLine(suggestion),
     };
   };
 
@@ -140,7 +163,11 @@ export function buildActiveSessionView(
 
   const addable = exercises
     .filter((e) => !e.archived && !shown.has(e.id))
-    .map((e) => ({ id: e.id, name: e.name, prefill: prefillFor(null, lastPerformance.get(e.id) ?? null, null) }));
+    .map((e) => ({
+      id: e.id,
+      name: e.name,
+      prefill: prefillFor(null, suggestions.get(e.id) ?? lastPerformance.get(e.id) ?? null, null),
+    }));
 
   return {
     id: session.id,
@@ -170,8 +197,21 @@ function nextTarget(
   return null;
 }
 
-function prefillFor(inSession: LoggedSet | null, previous: LoggedSet | null, rest: number | null): SetPrefill {
-  const source = inSession ?? previous;
+function suggestionLine(suggestion: PrefillSuggestion): SuggestionLine {
+  return {
+    text: `Suggested by ${suggestion.trainerName}: ${formatSet(suggestion)}`,
+    sets: suggestion.sets === null ? null : plural(suggestion.sets, "set"),
+    note: suggestion.note,
+  };
+}
+
+/** Weight and reps from this workout's last set, else from `fallback` (a suggestion or last time). */
+function prefillFor(
+  inSession: LoggedSet | null,
+  fallback: Pick<LoggedSet, "weightKg" | "reps"> | null,
+  rest: number | null,
+): SetPrefill {
+  const source = inSession ?? fallback;
   return {
     weightKg: source ? String(source.weightKg) : "",
     reps: source ? String(source.reps) : "",

@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { CommentList } from "@/modules/coaching/ui/comment-list";
+import { loadMyWorkoutComments } from "@/modules/coaching/ui/feedback-service";
 import { deleteSessionAction } from "@/modules/sessions/ui/actions";
 import { ConfirmDelete } from "@/modules/sessions/ui/confirm-delete";
 import { loadSessionDetail, parseSessionId } from "@/modules/sessions/ui/session-service";
@@ -12,7 +14,7 @@ export const metadata: Metadata = { title: "Workout · Gymple" };
 export default async function SessionDetailPage({ params }: PageProps<"/sessions/[id]">) {
   const id = parseSessionId((await params).id);
   // Another user's workout, or one still in progress, looks exactly like a missing one.
-  const session = id ? await loadSessionDetail(id) : null;
+  const [session, comments] = id ? await Promise.all([loadSessionDetail(id), loadMyWorkoutComments(id)]) : [null, []];
   if (!session) notFound();
 
   return (
@@ -53,12 +55,21 @@ export default async function SessionDetailPage({ params }: PageProps<"/sessions
         );
       })}
 
+      {comments.length > 0 && (
+        <section aria-labelledby="comments-heading" className="rounded-xl border border-border bg-surface p-4">
+          <h2 id="comments-heading" className="font-semibold text-fg">
+            Trainer comments
+          </h2>
+          <CommentList comments={comments} />
+        </section>
+      )}
+
       <div className="border-t border-border pt-4">
         <ConfirmDelete
           action={deleteSessionAction}
           sessionId={session.id}
           label="Delete workout"
-          question="Delete this workout and all its sets? This can't be undone."
+          question="Delete this workout, all its sets and its trainer comments? This can't be undone."
           confirmLabel="Yes, delete workout"
         />
       </div>

@@ -288,6 +288,59 @@ export const sessionSets = mysqlTable(
   ],
 );
 
+/*
+ * Trainer feedback (S10, S12). A load suggestion is free input from a trainer
+ * for one of a student's exercises; one per (trainer, student, exercise), and
+ * saving again replaces it. It never touches routines. Whether it applies is
+ * decided by the app (active trainer, still linked, S7).
+ */
+export const loadSuggestions = mysqlTable(
+  "load_suggestions",
+  {
+    id: int().primaryKey().autoincrement(),
+    trainerUserId: int("trainer_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    studentUserId: int("student_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    exerciseId: int("exercise_id")
+      .notNull()
+      .references(() => exercises.id, { onDelete: "cascade" }),
+    weightKg: decimal("weight_kg", { precision: 6, scale: 2 }).notNull(),
+    reps: smallint().notNull(),
+    sets: smallint(),
+    note: text(),
+    // Set by the app on every save; the most recent suggestion wins.
+    suggestedAt: timestamp("suggested_at", { mode: "date", fsp: 3 }).notNull(),
+  },
+  (table) => [
+    uniqueIndex("load_suggestions_trainer_student_exercise_uq").on(
+      table.trainerUserId,
+      table.studentUserId,
+      table.exerciseId,
+    ),
+    index("load_suggestions_student_idx").on(table.studentUserId, table.suggestedAt),
+  ],
+);
+
+/** A trainer's comment on a student's finished workout; deleted with the workout. */
+export const workoutComments = mysqlTable(
+  "workout_comments",
+  {
+    id: int().primaryKey().autoincrement(),
+    sessionId: int("session_id")
+      .notNull()
+      .references(() => workoutSessions.id, { onDelete: "cascade" }),
+    trainerUserId: int("trainer_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    body: text().notNull(),
+    createdAt: timestamp("created_at", { mode: "date", fsp: 3 }).notNull(),
+  },
+  (table) => [index("workout_comments_session_idx").on(table.sessionId, table.createdAt)],
+);
+
 export const usersRelations = relations(users, ({ many }) => ({
   sessions: many(sessions),
   accounts: many(accounts),

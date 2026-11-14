@@ -23,6 +23,7 @@ import {
   groupSets,
   toHistoryEntry,
   type ExerciseRef,
+  type PrefillSuggestion,
 } from "./session-view";
 
 export { parseSessionId } from "./parse-session-form";
@@ -54,8 +55,12 @@ async function routineNames(userId: number): Promise<Map<number, string>> {
   return new Map([...active, ...archived].map((r) => [r.id, r.name]));
 }
 
-/** The active workout screen, or null when no workout is active. */
-export async function loadActiveSession() {
+/**
+ * The active workout screen, or null when no workout is active.
+ * `suggestions` are the signed-in user's effective trainer suggestions
+ * (coaching's `loadMyPrefillSuggestions`), passed in by the page.
+ */
+export async function loadActiveSession(suggestions: ReadonlyMap<number, PrefillSuggestion> = new Map()) {
   const user = await requireUser();
   const session = await getActiveSession(sessionRepository, user.id);
   if (!session) return null;
@@ -69,7 +74,7 @@ export async function loadActiveSession() {
     user.id,
     exercises.map((e) => e.id),
   );
-  return buildActiveSessionView(session, routine, exercises, lastPerformance);
+  return buildActiveSessionView(session, routine, exercises, lastPerformance, suggestions);
 }
 
 /** The id of the user's active workout, if any, for links. */

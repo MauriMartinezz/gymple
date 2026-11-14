@@ -25,6 +25,11 @@ export class InMemoryCoachingRepository implements CoachingRepository {
     return userId;
   }
 
+  /** The account's name, for adapters that show who wrote something. */
+  nameOf(userId: number): string | null {
+    return this.users.get(userId)?.name ?? null;
+  }
+
   async findInviteCode(trainerId: number): Promise<string | null> {
     return this.codes.get(trainerId) ?? null;
   }

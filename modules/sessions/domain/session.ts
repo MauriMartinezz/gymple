@@ -52,13 +52,11 @@ export interface RawSetInput {
 export function validateSetInput(raw: RawSetInput): SetValidationResult {
   const errors: SetErrors = {};
 
-  const weightKg = inRange(asDecimal(raw.weightKg, 3, 2), WEIGHT_KG);
-  if (weightKg === null) {
-    errors.weightKg = `Weight must be a number from ${WEIGHT_KG.min} to ${WEIGHT_KG.max} kg with at most 2 decimals.`;
-  }
+  const weightKg = parseWeightKg(raw.weightKg);
+  if (weightKg === null) errors.weightKg = WEIGHT_KG_ERROR;
 
-  const reps = inRange(asWholeNumber(raw.reps), SET_REPS);
-  if (reps === null) errors.reps = `Reps must be a whole number from ${SET_REPS.min} to ${SET_REPS.max}.`;
+  const reps = parseSetReps(raw.reps);
+  if (reps === null) errors.reps = SET_REPS_ERROR;
 
   let rpe: number | null = null;
   if (!isBlank(raw.rpe)) {
@@ -80,6 +78,24 @@ export function validateSetInput(raw: RawSetInput): SetValidationResult {
   return { ok: true, value: { weightKg: weightKg!, reps: reps!, rpe, restSeconds } };
 }
 
+export const WEIGHT_KG_ERROR = `Weight must be a number from ${WEIGHT_KG.min} to ${WEIGHT_KG.max} kg with at most 2 decimals.`;
+export const SET_REPS_ERROR = `Reps must be a whole number from ${SET_REPS.min} to ${SET_REPS.max}.`;
+
+/** A set's weight (0–999.99 kg, at most 2 decimals), or null when invalid. Shared with load suggestions. */
+export function parseWeightKg(value: unknown): number | null {
+  return inRange(asDecimal(value, 3, 2), WEIGHT_KG);
+}
+
+/** A set's reps (whole number 1–100), or null when invalid. Shared with load suggestions. */
+export function parseSetReps(value: unknown): number | null {
+  return inRange(asWholeNumber(value), SET_REPS);
+}
+
+/** A whole number within `range`, or null when invalid (same strict parsing as reps). */
+export function parseWholeNumberIn(value: unknown, range: { min: number; max: number }): number | null {
+  return inRange(asWholeNumber(value), range);
+}
+
 export type NotesValidationResult = { ok: true; value: string | null } | { ok: false; error: string };
 
 export function validateSessionNotes(raw: unknown): NotesValidationResult {
@@ -90,7 +106,7 @@ export function validateSessionNotes(raw: unknown): NotesValidationResult {
   return { ok: true, value: notes || null };
 }
 
-function isBlank(value: unknown): boolean {
+export function isBlank(value: unknown): boolean {
   return value === undefined || value === null || (typeof value === "string" && value.trim() === "");
 }
 
@@ -125,7 +141,11 @@ function inRange(value: number | null, range: { min: number; max: number }): num
   return value !== null && value >= range.min && value <= range.max ? value : null;
 }
 
-// Browsers submit line breaks as CRLF but count them as one character.
-function asMultilineText(value: unknown): string {
+/**
+ * Trimmed text with line breaks normalized to "\n". Browsers submit line
+ * breaks as CRLF but count them as one character, so lengths are checked on
+ * this. Shared with trainer comments and suggestion notes.
+ */
+export function asMultilineText(value: unknown): string {
   return (typeof value === "string" ? value.trim() : "").replace(/\r\n?/g, "\n");
 }

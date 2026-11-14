@@ -2,7 +2,10 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { parseUserId } from "@/modules/admin/ui/parse-user-id";
+import { CommentForm } from "@/modules/coaching/ui/comment-form";
+import { CommentList } from "@/modules/coaching/ui/comment-list";
 import { loadStudentWorkout } from "@/modules/coaching/ui/coaching-service";
+import { loadOwnWorkoutComments } from "@/modules/coaching/ui/feedback-service";
 import { ReadOnlySet } from "@/modules/coaching/ui/read-only-set";
 import { parseSessionId } from "@/modules/sessions/ui/parse-session-form";
 import { plural } from "@/modules/sessions/ui/session-view";
@@ -14,8 +17,11 @@ export default async function StudentWorkoutPage({ params }: PageProps<"/student
   const studentId = parseUserId(raw.studentId);
   const sessionId = parseSessionId(raw.sessionId);
   // Active, foreign, or not-coached workouts all look like a missing page.
-  const workout = studentId && sessionId ? await loadStudentWorkout(studentId, sessionId) : null;
-  if (!workout) notFound();
+  const [workout, comments] =
+    studentId && sessionId
+      ? await Promise.all([loadStudentWorkout(studentId, sessionId), loadOwnWorkoutComments(studentId, sessionId)])
+      : [null, null];
+  if (!workout || !comments) notFound();
 
   return (
     <section className="flex flex-col gap-6">
@@ -45,6 +51,16 @@ export default async function StudentWorkoutPage({ params }: PageProps<"/student
           </section>
         );
       })}
+
+      <section aria-labelledby="comments-heading" className="flex flex-col gap-3 border-t border-border pt-4">
+        <h2 id="comments-heading" className="text-lg font-semibold text-fg">
+          Your comments
+        </h2>
+        {comments.length > 0 && (
+          <CommentList comments={comments} deletable={{ studentId: workout.student.userId, sessionId: workout.id }} />
+        )}
+        <CommentForm studentId={workout.student.userId} sessionId={workout.id} />
+      </section>
     </section>
   );
 }

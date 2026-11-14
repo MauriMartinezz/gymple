@@ -94,6 +94,29 @@ they see none of their students' data and cannot remove students, while
 students see them as inactive and can still leave. Restoring the trainer
 brings the links back.
 
+### Load suggestions and comments
+
+- **Load suggestions**: on a student's page the trainer opens one of the
+  student's exercises and suggests a weight (0–999.99 kg, at most 2 decimals)
+  and reps (1–100), optionally sets (1–20) and a note (up to 500 characters).
+  Saving again replaces the trainer's suggestion; **Withdraw suggestion**
+  removes it. Routines never change.
+- The student sees the current suggestions on **Trainers**, and on the active
+  workout card ("Suggested by Ana: 85 kg × 6", plus the sets and note). While
+  an exercise has no sets in the workout, its first set is prefilled with the
+  suggestion instead of last time's values; once a set is logged, the
+  student's own last set prefills the next one, so changes stay in that
+  workout. With several trainers, the most recent suggestion for the exercise
+  wins.
+- **Comments**: on a student's finished workout the trainer writes comments
+  (up to 1000 characters) and can delete their own. The student reads every
+  trainer's comments on the workout's page; deleting the workout deletes them.
+
+A revoked trainer cannot suggest, withdraw, comment or delete. Their
+suggestions stop applying and are hidden from the student until the trainer
+is restored (likewise for a trainer the student left); their comments stay
+readable by the student.
+
 ### Choosing or resetting a password
 
 `/reset-password` is where the "choose your password" link lands (better-auth's

@@ -131,6 +131,70 @@ describe("buildActiveSessionView", () => {
   });
 });
 
+describe("buildActiveSessionView with load suggestions", () => {
+  const suggestions = new Map([
+    [BENCH, { trainerName: "Ana", weightKg: 85, reps: 6, sets: 4, note: "Pause on the chest" }],
+    [DIPS, { trainerName: "Dani", weightKg: 10, reps: 8, sets: null, note: null }],
+    [ROW, { trainerName: "Ana", weightKg: 70, reps: 10, sets: null, note: null }],
+  ]);
+  const last = new Map([
+    [BENCH, set(BENCH, { weightKg: 70, reps: 10 })],
+    [DIPS, set(DIPS, { weightKg: 0, reps: 12 })],
+  ]);
+
+  it("prefills from the suggestion while the exercise has no sets in this workout, keeping last time", () => {
+    const view = buildActiveSessionView(
+      session([]),
+      { name: "Push day", items: [item(BENCH), item(DIPS, { restSeconds: 45 })] },
+      exercises,
+      last,
+      suggestions,
+    );
+
+    expect(view.cards.map((c) => [c.prefill, c.lastTime, c.suggestion])).toEqual([
+      [
+        { weightKg: "85", reps: "6", restSeconds: "90" },
+        "Last time: 70 kg × 10",
+        { text: "Suggested by Ana: 85 kg × 6", sets: "4 sets", note: "Pause on the chest" },
+      ],
+      [
+        { weightKg: "10", reps: "8", restSeconds: "45" },
+        "Last time: 0 kg × 12",
+        { text: "Suggested by Dani: 10 kg × 8", sets: null, note: null },
+      ],
+    ]);
+    expect(view.addable.find((e) => e.id === ROW)?.prefill).toEqual({ weightKg: "70", reps: "10", restSeconds: "" });
+  });
+
+  it("prefills from the student's own last set once one is logged", () => {
+    const view = buildActiveSessionView(
+      session([set(BENCH, { weightKg: 80, reps: 5, restSeconds: 120 })]),
+      { name: "Push day", items: [item(BENCH)] },
+      exercises,
+      last,
+      suggestions,
+    );
+
+    expect(view.cards[0].prefill).toEqual({ weightKg: "80", reps: "5", restSeconds: "120" });
+    expect(view.cards[0].suggestion?.text).toBe("Suggested by Ana: 85 kg × 6");
+  });
+
+  it("is unchanged without suggestions", () => {
+    const routine = { name: "Push day", items: [item(BENCH), item(DIPS, { restSeconds: 45 })] };
+    const workout = session([set(BENCH, { weightKg: 82.5, reps: 6, restSeconds: 120 })]);
+
+    const without = buildActiveSessionView(workout, routine, exercises, last);
+    const empty = buildActiveSessionView(workout, routine, exercises, last, new Map());
+
+    expect(empty).toEqual(without);
+    expect(without.cards.map((c) => [c.prefill, c.lastTime, c.suggestion])).toEqual([
+      [{ weightKg: "82.5", reps: "6", restSeconds: "120" }, "Last time: 70 kg × 10", null],
+      [{ weightKg: "0", reps: "12", restSeconds: "45" }, "Last time: 0 kg × 12", null],
+    ]);
+    expect(without.addable).toEqual([{ id: ROW, name: "Row", prefill: { weightKg: "", reps: "", restSeconds: "" } }]);
+  });
+});
+
 describe("groupSets", () => {
   it("groups sets by exercise in the order first logged", () => {
     const groups = groupSets([set(DIPS), set(BENCH), set(DIPS, { setNumber: 2 })], exercises);

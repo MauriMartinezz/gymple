@@ -47,6 +47,15 @@ export function ActiveSession({ view }: { view: ActiveSessionView }) {
               </ol>
             )}
 
+            {card.suggestion && (
+              <div className="rounded-md bg-primary-subtle px-3 py-2 text-sm text-on-primary-subtle">
+                <p className="font-medium">
+                  {card.suggestion.text}
+                  {card.suggestion.sets && <span className="font-normal"> · {card.suggestion.sets}</span>}
+                </p>
+                {card.suggestion.note && <p className="mt-0.5 whitespace-pre-line">{card.suggestion.note}</p>}
+              </div>
+            )}
             {card.lastTime && <p className="text-sm text-fg-muted">{card.lastTime}</p>}
             {/* Remounts after each logged set so the fields show the new prefill. */}
             <LogSetForm
