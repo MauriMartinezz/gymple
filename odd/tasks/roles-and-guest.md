@@ -19,7 +19,7 @@ Objective: admin, trainer and user roles; trainers coach many students (and stud
 
 | ID | Specs | Route | Status | Evidence |
 |----|-------|-------|--------|----------|
-| T1a | S6 | delegated (context backstop) | in progress | — |
+| T1a | S6 | delegated (context backstop) | written (400fa99), independent verification running | RED: module-missing for 5 unit files + integration test (verify-email-result test written after code); GREEN: `pnpm test` 451/451, `pnpm test:integration` 73/73, tsc, lint, build clean |
 | T1b | S1, S2 | — | pending: open decisions | — |
 | T2 | S3, S4 | inline | pending | — |
 | T3 | S3 | inline | pending | — |
@@ -37,3 +37,4 @@ Objective: admin, trainer and user roles; trainers coach many students (and stud
 - **L2** (2026-11-13) User: "Lo que quiero que pase cuando carga algo un anónimo se guarde en el navegador, no quiero persistir datos de gente que no tiene cuenta"
 - **L4** (2026-11-13) User: "1) Registro por invitacion o que requiera validacion por email para evitar tantas cuentas spam" → S6; T1 split into T1a (sign-up) and T1b (roles/admin).
 - **L3** Finding: sign-up is disabled (`modules/auth/infrastructure/better-auth.ts`, `disableSignUp: true`; accounts come from `pnpm db:seed`). Every page and action is server-side and scoped by `requireUser()`, so guest mode needs client-side adapters and UI wiring (T4). Risk items expected: 2 (auth, roles, permissions) in T1–T3, 1 (migrations) in T1–T2.
+- **L5** T1a written by a bounded writer (commit 400fa99): `createAuth` factory takes the `EmailSender`; `requireEmailVerification`, `sendOnSignUp`, `sendOnSignIn` on, auto sign-in after verification off; verification links land on `/verify-email?status=verified` (better-auth appends `error=<CODE>` on a bad token); duplicate sign-up returns a generic 200 and sends nothing; SMTP config required in production (checked on first email), Mailpit defaults otherwise; nodemailer 10.5.0 pinned. Independent verifier launched (risk items 2 and 5).
