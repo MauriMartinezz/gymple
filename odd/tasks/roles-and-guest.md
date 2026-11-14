@@ -13,7 +13,11 @@ Objective: admin, trainer and user roles; trainers coach many students (and stud
 - **S6** — User's words: "Registro por invitacion o que requiera validacion por email para evitar tantas cuentas spam"
   - Decision: open sign-up (name, email, password) with mandatory email verification for everyone, invited or not — the trainer link is public, so an invitation alone does not stop spam. An unverified account cannot sign in; trying to sign in re-sends the verification email. New accounts get the `user` role. Accounts created by `pnpm db:seed` are marked verified.
   - Assumption: emails go through an `EmailSender` port; production uses SMTP (nodemailer, configured by `SMTP_URL` and `EMAIL_FROM`), development uses a Mailpit container in `docker-compose.yml`, tests use an in-memory fake. Verification links use better-auth's default expiry.
-- **Open (to confirm with the user):** what "sugerir cargas" targets; DNI scope; whether "dar de baja" a trainer removes the trainer role or blocks the account.
+- **S7** — User's words: "un entrenador puede ser a su vez un asesorado de otro entrenador, es algo bastante comun. Si un administrador da de baja un entrenador solamente deja de poder ejercer sus funciones de entrenador"
+  - Roles are not exclusive: every account is a user (own exercises, routines, workouts, trainers); trainer and admin are capabilities added on top. A trainer can be another trainer's student (never their own).
+  - Revoking a trainer only removes the trainer capability; the account, its own training data and its own trainers stay untouched.
+  - Assumption: on revocation the trainer's links to their students are kept but suspended — the trainer loses access to the students' workouts and cannot add suggestions or comments, students see the trainer as inactive, existing suggestions and comments stay readable by the student. Certifying the same person again restores those links.
+- **Open (to confirm with the user):** what "sugerir cargas" targets; DNI scope.
 
 ## Tasks
 
@@ -26,7 +30,7 @@ Objective: admin, trainer and user roles; trainers coach many students (and stud
 | T4 | S5 | inline | pending | — |
 
 - T1a — Sign-up with email verification: `EmailSender` port + SMTP adapter + fake, better-auth verification config, `/signup` and verification-result pages, login handling of unverified accounts, Mailpit service, seed marks accounts verified, docs. Risk: items 2 (auth) and 5 (new dependency).
-- T1b — Roles and admin: role on users (+ migration), first admin via seed, admin screens to create/certify, deactivate and edit trainers.
+- T1b — Roles and admin (S1, S2, S7): admin flag and trainer status on users (+ migration), first admin via seed, admin screens to create/certify, deactivate and edit trainers.
 - T2 — Trainer–student links: many-to-many table, trainer profile invite link, join/leave, trainer's student list and read-only view of their workouts.
 - T3 — Trainer feedback: load suggestions and comments/reviews on students' workouts.
 - T4 — Guest mode: browser-storage repositories (exercises, routines, sessions) behind the existing ports, client-run use cases, "Continue as guest" entry, no server writes.
@@ -39,3 +43,4 @@ Objective: admin, trainer and user roles; trainers coach many students (and stud
 - **L3** Finding: sign-up is disabled (`modules/auth/infrastructure/better-auth.ts`, `disableSignUp: true`; accounts come from `pnpm db:seed`). Every page and action is server-side and scoped by `requireUser()`, so guest mode needs client-side adapters and UI wiring (T4). Risk items expected: 2 (auth, roles, permissions) in T1–T3, 1 (migrations) in T1–T2.
 - **L5** T1a written by a bounded writer (commit 400fa99): `createAuth` factory takes the `EmailSender`; `requireEmailVerification`, `sendOnSignUp`, `sendOnSignIn` on, auto sign-in after verification off; verification links land on `/verify-email?status=verified` (better-auth appends `error=<CODE>` on a bad token); duplicate sign-up returns a generic 200 and sends nothing; SMTP config required in production (checked on first email), Mailpit defaults otherwise; nodemailer 10.5.0 pinned. Independent verifier launched (risk items 2 and 5).
 - **L6** Independent verifier: every S6 item PASS, no blockers (probes: no account enumeration, no open redirect outside NODE_ENV=test, sign-up rate limited 3/10 s, verified login unchanged). Advisory 4 fixed by the parent: the verification email no longer includes the name typed at sign-up (anyone can sign up with someone else's address); RED 1 test → GREEN. Open advisories: SMTP failure only logged (user recovers by signing in); production SMTP misconfig surfaces on first send; Vitest disables better-auth origin checks, so redirect/CSRF protection is not pinned by the suite.
+- **L7** (2026-11-13) User: "Estoy pensando algo, un entrenador puede ser a su vez un asesorado de otro entrenador, es algo bastante comun. Si un administrador da de baja un entrenador solamente deja de poder ejercer sus funciones de entrenador" → S7 (non-exclusive capabilities; revocation keeps links suspended, assumption).
