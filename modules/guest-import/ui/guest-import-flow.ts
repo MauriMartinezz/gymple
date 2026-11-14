@@ -95,7 +95,9 @@ export function summarizeImport(counts: ImportCounts): string {
   ].filter((part): part is string => part !== null);
   const matched =
     counts.matchedExercises > 0
-      ? `${counts.matchedExercises === 1 ? "1 exercise was" : `${counts.matchedExercises} exercises were`} already in your account, so its records now use that one.`
+      ? counts.matchedExercises === 1
+        ? "1 exercise was already in your account, so its records now use that one."
+        : `${counts.matchedExercises} exercises were already in your account, so their records now use the account's exercises.`
       : null;
   if (parts.length === 0) return matched ?? "Nothing was imported.";
   const list = parts.length === 1 ? parts[0] : `${parts.slice(0, -1).join(", ")} and ${parts.at(-1)}`;

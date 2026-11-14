@@ -152,5 +152,8 @@ describe("summarizeImport", () => {
     expect(summarizeImport({ exercises: 0, matchedExercises: 0, routines: 0, workouts: 0, sets: 0 })).toBe(
       "Nothing was imported.",
     );
+    expect(summarizeImport({ exercises: 0, matchedExercises: 3, routines: 0, workouts: 1, sets: 4 })).toBe(
+      "Imported 1 workout (4 sets). 3 exercises were already in your account, so their records now use the account's exercises.",
+    );
   });
 });
