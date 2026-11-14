@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-/** Shown on every guest page (S13). */
+/** Shown on every guest page (S13); signed-in pages offer the import (S14). */
 export function GuestBanner() {
   return (
     <div role="note" className="border-b border-border bg-primary-subtle">
@@ -8,7 +8,8 @@ export function GuestBanner() {
         Guest mode: your data is saved only in this browser.{" "}
         <Link href="/signup" className="font-semibold underline">
           Create an account
-        </Link>
+        </Link>{" "}
+        and you can import it.
       </p>
     </div>
   );

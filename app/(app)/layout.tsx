@@ -3,6 +3,7 @@ import { Suspense } from "react";
 import { isCurrentUserAdmin, requireUser } from "@/modules/auth/infrastructure/session";
 import { SignOutButton } from "@/modules/auth/ui/sign-out-button";
 import { isCurrentUserActiveTrainer } from "@/modules/coaching/ui/coaching-service";
+import { GuestImportOffer } from "@/modules/guest-import/ui/guest-import-offer";
 
 /*
  * Every route in this group requires a signed-in user.
@@ -44,7 +45,11 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
       </header>
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-8">
         <Suspense fallback={<p className="text-fg-subtle">Loading…</p>}>
-          <AuthGate>{children}</AuthGate>
+          <AuthGate>
+            {/* Client-only: shown when this browser holds guest data (S14). */}
+            <GuestImportOffer />
+            {children}
+          </AuthGate>
         </Suspense>
       </main>
     </div>
