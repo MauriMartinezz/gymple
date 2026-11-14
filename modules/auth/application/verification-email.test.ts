@@ -21,14 +21,16 @@ describe("verificationEmail", () => {
     const message = verificationEmail({ name: "Ana", email: "ana@example.com" }, "https://x.test/v?a=1&b=2");
     expect(message.to).toBe("ana@example.com");
     expect(message.subject).toBe("Verify your email for Gymple");
-    expect(message.text).toContain("Hi Ana,");
     expect(message.text).toContain("https://x.test/v?a=1&b=2");
     expect(message.html).toContain('href="https://x.test/v?a=1&amp;b=2"');
   });
 
-  it("escapes the name in the HTML body", () => {
-    const message = verificationEmail({ name: "<b>Eve</b>", email: "eve@example.com" }, "https://x.test");
-    expect(message.html).not.toContain("<b>Eve</b>");
-    expect(message.html).toContain("&lt;b&gt;Eve&lt;/b&gt;");
+  // Anyone can sign up with someone else's address, so the name they typed
+  // must not reach that inbox (it could carry a phishing link).
+  it("leaves the name the user typed out of the email", () => {
+    const name = "Visit http://phish.example now";
+    const message = verificationEmail({ name, email: "victim@example.com" }, "https://x.test");
+    expect(message.text).not.toContain(name);
+    expect(message.html).not.toContain("phish.example");
   });
 });

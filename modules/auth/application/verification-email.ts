@@ -13,10 +13,14 @@ export function verificationLink(url: string): string {
   return link.toString();
 }
 
+/**
+ * The message never includes the name typed at sign-up: anyone can sign up
+ * with someone else's address, so that text would reach a stranger's inbox.
+ */
 export function verificationEmail(user: { name: string; email: string }, link: string): EmailMessage {
   const subject = "Verify your email for Gymple";
   const text = [
-    `Hi ${user.name},`,
+    "Hi,",
     "",
     "Confirm your email address to start using Gymple:",
     link,
@@ -24,7 +28,7 @@ export function verificationEmail(user: { name: string; email: string }, link: s
     "The link expires in 1 hour. If you didn't create an account, ignore this email.",
   ].join("\n");
   const html = [
-    `<p>Hi ${escapeHtml(user.name)},</p>`,
+    "<p>Hi,</p>",
     "<p>Confirm your email address to start using Gymple:</p>",
     `<p><a href="${escapeHtml(link)}">Verify my email</a></p>`,
     "<p>The link expires in 1 hour. If you didn't create an account, ignore this email.</p>",
