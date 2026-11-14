@@ -10,7 +10,7 @@ const PLACEHOLDER_ORIGIN = "http://return-path.invalid";
 export function safeReturnPath(raw: unknown): string | null {
   if (typeof raw !== "string" || !raw.startsWith("/")) return null;
   // "//host" and "/\host" are protocol-relative to browsers; control characters are stripped by URL parsers.
-  if (raw.startsWith("//") || raw.includes("\\") || /[\u0000-\u001f\u007f\s]/.test(raw)) return null;
+  if (isProtocolRelative(raw) || raw.includes("\\") || /[\u0000-\u001f\u007f\s]/.test(raw)) return null;
 
   let url: URL;
   try {
@@ -19,7 +19,13 @@ export function safeReturnPath(raw: unknown): string | null {
     return null;
   }
   if (url.origin !== PLACEHOLDER_ORIGIN) return null;
-  return `${url.pathname}${url.search}${url.hash}`;
+  const path = `${url.pathname}${url.search}${url.hash}`;
+  // Resolving dot segments can turn "/.//host" into "//host": check the result too.
+  return isProtocolRelative(path) ? null : path;
+}
+
+function isProtocolRelative(path: string): boolean {
+  return path.startsWith("//") || path.startsWith("/\\");
 }
 
 export function loginHref(next: unknown): string {

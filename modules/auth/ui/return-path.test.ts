@@ -24,6 +24,12 @@ describe("safeReturnPath", () => {
     " /join/abc",
     "/join/abc\n",
     "/\t/evil.example",
+    // Dot segments resolve to a protocol-relative "//evil.example".
+    "/.//evil.example",
+    "/..//evil.example",
+    "/%2e//evil.example",
+    "/%2e%2e//evil.example",
+    "/a/..//evil.example",
     // A repeated query parameter is not a return path.
     ["/join/abc", "/other"],
   ])("rejects %j", (raw) => {
