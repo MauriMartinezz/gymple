@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { buttonClass, inputClass, labelClass } from "@/shared/ui/styles";
 import { authClient } from "./auth-client";
+import { signInErrorMessage } from "./auth-error-message";
 
 // Signs in through the HTTP API (not a server action) so Better Auth's
 // rate limiter applies: there is a single sign-in path to protect.
@@ -36,7 +37,7 @@ export function LoginForm() {
 
     if (signInError) {
       setPending(false);
-      setError(errorMessage(signInError.status, retryAfterSeconds));
+      setError(signInErrorMessage(signInError, retryAfterSeconds));
       return;
     }
 
@@ -97,15 +98,4 @@ export function LoginForm() {
       </button>
     </form>
   );
-}
-
-function errorMessage(status: number, retryAfterSeconds: number | null): string {
-  if (status === 429) {
-    if (!retryAfterSeconds) return "Too many sign-in attempts. Please try again later.";
-    const minutes = Math.ceil(retryAfterSeconds / 60);
-    return `Too many sign-in attempts. Try again in ${minutes} minute${minutes === 1 ? "" : "s"}.`;
-  }
-  // Same message for unknown email and wrong password: don't reveal which accounts exist.
-  if (status === 401) return "Invalid email or password.";
-  return "Something went wrong. Please try again.";
 }

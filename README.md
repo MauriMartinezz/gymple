@@ -20,6 +20,25 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Accounts and email verification
+
+Anyone can create an account at `/signup` (name, email, password). The account
+cannot sign in until its email is verified: sign-up sends a verification link,
+and signing in with an unverified account sends a new one. Links expire after
+one hour. Accounts created by `pnpm db:seed` are already verified.
+
+Emails are sent over SMTP:
+
+| Variable     | Description                                                     | Default outside production       |
+| ------------ | --------------------------------------------------------------- | -------------------------------- |
+| `SMTP_URL`   | `smtp://` or `smtps://` URL, credentials included               | `smtp://localhost:1025`          |
+| `EMAIL_FROM` | Sender address, e.g. `Gymple <no-reply@example.com>`            | `Gymple <no-reply@gymple.local>` |
+
+Both are required in production. In development, `pnpm db:up` also starts
+[Mailpit](https://mailpit.axllent.org/), which catches every email: open
+<http://localhost:8025> to read them. `MAILPIT_SMTP_PORT` and `MAILPIT_UI_PORT`
+change its ports.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

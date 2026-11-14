@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
 import { getCurrentUser } from "@/modules/auth/infrastructure/session";
+import { AuthCard } from "@/modules/auth/ui/auth-card";
 import { LoginForm } from "@/modules/auth/ui/login-form";
 
 export const metadata: Metadata = { title: "Sign in · Gymple" };
@@ -12,17 +14,19 @@ export default function LoginPage() {
       <Suspense fallback={null}>
         <RedirectIfSignedIn />
       </Suspense>
-      <div className="w-full max-w-sm">
-        <div className="mb-8 text-center">
-          <p className="text-3xl font-bold tracking-tight text-fg">
-            Gym<span className="text-primary">ple</span>
-          </p>
-          <h1 className="mt-2 text-base text-fg-muted">Sign in to track your training</h1>
-        </div>
-        <div className="rounded-xl border border-border bg-surface p-6 shadow-md">
-          <LoginForm />
-        </div>
-      </div>
+      <AuthCard
+        title="Sign in to track your training"
+        footer={
+          <>
+            New to Gymple?{" "}
+            <Link href="/signup" className="font-medium text-primary hover:underline">
+              Create an account
+            </Link>
+          </>
+        }
+      >
+        <LoginForm />
+      </AuthCard>
     </main>
   );
 }

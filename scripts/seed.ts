@@ -1,5 +1,6 @@
 /**
- * Creates (or resets the password of) the test user.
+ * Creates (or resets the password of) the test user, marked as verified so
+ * it can sign in without the verification email.
  *
  *   pnpm db:seed
  *
@@ -38,6 +39,8 @@ async function main() {
       if (!user) {
         const [result] = await tx.insert(users).values({ email, name, emailVerified: true });
         user = { id: result.insertId };
+      } else {
+        await tx.update(users).set({ emailVerified: true }).where(eq(users.id, user.id));
       }
 
       const credential = and(eq(accounts.userId, user.id), eq(accounts.providerId, "credential"));
