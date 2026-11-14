@@ -27,7 +27,15 @@ Objective: admin, trainer and user roles; trainers coach many students (and stud
   - "Dar de baja": revokes the trainer capability (S7); "Restore" re-certifies with the stored DNI.
   - "Editar": the admin edits a trainer's name, email and DNI. Changing the email marks it unverified and sends a verification email to the new address.
   - The admin list shows trainers (active and revoked) with name, email, DNI and status, newest first.
-- **Open (to confirm with the user):** what "sugerir cargas" targets.
+- **S10** — User's words: "El entrenador sugiere cargas segun lo que le parezca: lo que haya hablado con su asesorado o lo que lo conozca" and "Lo ideal sería que cuando el cliente inicie un nuevo entrenamiento se actualice con esos valores sugeridos. Si el usuario no puede con esos pesos por lo que sea puede modificarlos para esa sesión"
+  - A suggestion is free input from an active trainer to one of their students for one of the student's exercises: weight (kg) and reps, optional sets and note. It never changes the routine.
+  - When the student logs that exercise in a new workout, the set prefill uses the suggestion instead of "last time"; the card shows it ("Suggested by Ana: 85 kg × 6"). Inside that workout, once the student logs a set, their own last set prefills the next one as today, so any change stays in that session.
+  - Assumptions: a suggestion stays in effect until the trainer replaces or withdraws it; with several trainers, the most recent suggestion for that exercise wins; a revoked trainer's suggestions stop applying (S7).
+- **S11** — T2 behaviour (assumptions derived from S3, S4, S7):
+  - Each active trainer has a profile link `/join/<code>` (random, unguessable code; the trainer can regenerate it, which invalidates the old one). A signed-in user opening it sees the trainer's name and confirms "Join as student"; a signed-out visitor is sent to sign in or sign up and back. A trainer cannot join themselves; joining twice is a no-op; a revoked trainer's link shows that they are not accepting students.
+  - Students list their trainers (active or inactive) and can leave one; trainers list their students and can remove one. Leaving or removing deletes the link.
+  - An active trainer sees a student's finished workouts (history and detail, read-only) and the student's exercise names; never active workouts, routines editing, or anything of non-students. Revoked trainers see nothing (links suspended, S7).
+- **S12** — Comments/reviews ("agregar reseñas o comentarios"), T3: assumption — an active trainer comments on a student's finished workout; the student reads them on the workout detail.
 
 ## Tasks
 
@@ -35,8 +43,8 @@ Objective: admin, trainer and user roles; trainers coach many students (and stud
 |----|-------|-------|--------|----------|
 | T1a | S6 | delegated (context backstop) | done (400fa99, fix in next commit) | RED: module-missing for 5 unit files + integration test (verify-email-result test written after code); GREEN: `pnpm test` 451/451, `pnpm test:integration` 73/73, tsc, lint, build clean |
 | T1b | S1, S2, S7, S8, S9 | delegated (context backstop) | done (bddfe29, fixes in next commit) | RED: module-missing for every new test file; GREEN: `pnpm test` 559/559, `pnpm test:integration` 102/102, build, tsc, lint clean; mutations (requireAdmin removed from revoke/restore: 6 fail; swapped for requireUser in create: 2 fail) killed |
-| T2 | S3, S4 | inline | pending | — |
-| T3 | S3 | inline | pending | — |
+| T2 | S3, S4, S7, S11 | delegated (context backstop) | in progress | — |
+| T3 | S3, S10, S12 | — | pending (after T2) | — |
 | T4 | S5 | inline | pending | — |
 
 - T1a — Sign-up with email verification: `EmailSender` port + SMTP adapter + fake, better-auth verification config, `/signup` and verification-result pages, login handling of unverified accounts, Mailpit service, seed marks accounts verified, docs. Risk: items 2 (auth) and 5 (new dependency).
@@ -57,3 +65,4 @@ Objective: admin, trainer and user roles; trainers coach many students (and stud
 - **L8** (2026-11-13) User: "Está bien que lo tengan solo entrenadores, que son personas certificadas por nosotros" → S8; T1b behaviour written as S9 (assumptions). Risk items for T1b: 1 (migration adding columns/table), 2 (admin permissions).
 - **L9** T1b written by a bounded writer (commit bddfe29, one commit of ~4k lines: the units depend on each other through the migration and `requireAdmin`). Admin = `users.is_admin` (better-auth drops undeclared body fields; pinned by an integration test); trainer = row in `trainers` (DNI unique incl. revoked, `revoked_at`); `isActiveTrainer(userId)` is the check T2 must use for suspended links. Password reset enabled (`sendResetPassword`, single-use, 1 h) — admin-created trainers have no password and set it through it; "Forgot your password?" now works for everyone. Writer assumptions: failed sends are logged; certifying does not verify the email; a revoked trainer is restored, not certified again. Open: revoke sessions when the admin changes a trainer's email? 1 h set-password link long enough? Needs `pnpm db:migrate` on the dev database. Independent verifier launched (items 1, 2, 3).
 - **L10** Independent verifier on T1b: every S1/S2/S7/S8/S9 item PASS, no blockers (migration 0002→0003 with existing users clean; no `is_admin` escalation via sign-up/update-user; reset redirects to foreign origins refused outside NODE_ENV=test; tokens single-use, 60 min). Parent fixed two advisories: certifying requires a verified email ("This account has not verified its email yet."; RED → GREEN), and a password reset signs out every other device (`revokeSessionsOnPasswordReset`; integration test fails without it). Open advisories: DNIs with a leading zero (`01234567` vs `1234567`) count as different; editing a trainer's email keeps old sessions and an already-sent set-password link valid for up to 1 h, and a mistyped first email gets only a verification email at the corrected address; timing can reveal whether an account exists on password reset.
+- **L11** (2026-11-13) User: "El entrenador sugiere cargas segun lo que le parezca: lo que haya hablado con su asesorado o lo que lo conozca" and "Lo ideal sería que cuando el cliente inicie un nuevo entrenamiento se actualice con esos valores sugeridos. Si el usuario no puede con esos pesos por lo que sea puede modificarlos para esa sesión" → S10. T2 behaviour written as S11, comments as S12 (assumptions).
