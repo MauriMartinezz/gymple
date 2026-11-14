@@ -129,10 +129,11 @@ page). The answer never reveals whether an email has an account.
 
 Anyone can try Gymple without an account: "Continue as guest" on `/login` and `/signup` opens `/guest`.
 
-- Guest data never reaches the server. Exercises and routines are saved in this browser's `localStorage` under one versioned key (`gymple.guest`); guest pages use no session, server action or database.
+- Guest data never reaches the server. Exercises, routines and workouts are saved in this browser's `localStorage` under one versioned key (`gymple.guest`); guest pages use no session, server action or database.
 - The same domain rules and use cases run in the browser, through browser adapters of the repository ports (`modules/guest/infrastructure`) that pass the same contract suites as the MySQL adapters.
 - "Delete guest data" (in the guest header) clears everything after a confirmation. Blocked or full storage, and unreadable saved data, show a message instead of failing silently.
-- Guest data is not moved into an account on sign-up. Workouts for guests are coming next; trainers, admin and coaching are for accounts only.
+- Guests start workouts (from a routine or free, one at a time), log, edit and delete sets with the same prefill from their own history, finish with the same "Save workout" / "Save and update routine" choice, and keep a history. Finishing with a routine update saves the workout and the routine in one storage write: if the routine rejects the change, nothing is saved.
+- Guest data is not moved into an account on sign-up. Trainers (suggestions, comments), admin and coaching are for accounts only.
 
 ## Learn More
 

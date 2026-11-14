@@ -10,7 +10,7 @@ export default function GuestHomePage() {
       <div>
         <h1 className="text-2xl font-semibold tracking-tight text-fg">Try Gymple as a guest</h1>
         <p className="mt-1 text-fg-muted">
-          Start by adding the exercises you train, then group them into routines. Nothing is sent to our servers.
+          Start by adding the exercises you train, group them into routines, then log your workouts. Nothing is sent to our servers.
         </p>
       </div>
       <Link href="/guest/exercises" className={buttonClass("primary")}>

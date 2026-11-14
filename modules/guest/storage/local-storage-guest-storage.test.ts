@@ -22,7 +22,7 @@ class FakeStorage {
 
 const sample = (): GuestSnapshot => ({
   ...emptyGuestSnapshot(),
-  nextIds: { exercise: 3, routine: 2 },
+  nextIds: { exercise: 3, routine: 2, session: 3, set: 3 },
   exercises: [
     { id: 1, userId: 1, name: "Squat", muscleGroup: "legs", notes: null, archivedAt: null },
     { id: 2, userId: 1, name: "Curl", muscleGroup: "biceps", notes: "EZ", archivedAt: new Date("2026-01-02T03:04:05.000Z") },
@@ -35,6 +35,30 @@ const sample = (): GuestSnapshot => ({
       description: null,
       items: [{ exerciseId: 1, targetSets: 3, targetRepsMin: 8, targetRepsMax: 12, restSeconds: 90, notes: null }],
       archivedAt: null,
+    },
+  ],
+  sessions: [
+    {
+      id: 1,
+      userId: 1,
+      routineId: 1,
+      startedAt: new Date("2026-01-03T10:00:00.000Z"),
+      finishedAt: new Date("2026-01-03T11:00:00.000Z"),
+      notes: "Good",
+      sets: [
+        { id: 1, exerciseId: 1, setNumber: 1, weightKg: 80.5, reps: 8, rpe: 8.5, restSeconds: 90, completedAt: new Date("2026-01-03T10:10:00.000Z") },
+      ],
+    },
+    {
+      id: 2,
+      userId: 1,
+      routineId: null,
+      startedAt: new Date("2026-01-04T10:00:00.000Z"),
+      finishedAt: null,
+      notes: null,
+      sets: [
+        { id: 2, exerciseId: 2, setNumber: 1, weightKg: 20, reps: 12, rpe: null, restSeconds: null, completedAt: new Date("2026-01-04T10:05:00.000Z") },
+      ],
     },
   ],
 });
@@ -56,6 +80,29 @@ describe("LocalStorageGuestStorage", () => {
     const read = storage.read();
     expect(read).toEqual({ ok: true, snapshot: sample() });
     expect(read.ok && read.snapshot.exercises[1].archivedAt).toBeInstanceOf(Date);
+    expect(read.ok && read.snapshot.sessions[0].sets[0].completedAt).toBeInstanceOf(Date);
+  });
+
+  it("reads a snapshot saved before workouts existed (no sessions, no session ids) as version 1", () => {
+    const backing = new FakeStorage();
+    const { nextIds, ...withSessions } = sample();
+    const before = { exercises: withSessions.exercises, routines: withSessions.routines, version: withSessions.version };
+    backing.items.set(
+      GUEST_STORAGE_KEY,
+      JSON.stringify({ ...before, nextIds: { exercise: nextIds.exercise, routine: nextIds.routine } }),
+    );
+
+    expect(new LocalStorageGuestStorage(() => backing).read()).toEqual({
+      ok: true,
+      snapshot: { ...before, nextIds: { exercise: 3, routine: 2, session: 1, set: 1 }, sessions: [] },
+    });
+  });
+
+  it("never hands out a session or set id already in use, even if the counters were lost", () => {
+    const backing = new FakeStorage();
+    backing.items.set(GUEST_STORAGE_KEY, JSON.stringify({ ...sample(), nextIds: {} }));
+    const read = new LocalStorageGuestStorage(() => backing).read();
+    expect(read.ok && read.snapshot.nextIds).toEqual({ exercise: 3, routine: 2, session: 3, set: 3 });
   });
 
   it("reports corrupted JSON without throwing", () => {
@@ -68,6 +115,10 @@ describe("LocalStorageGuestStorage", () => {
     ["a non-object", "42"],
     ["missing collections", JSON.stringify({ version: 1, nextIds: {}, exercises: "x", routines: [] })],
     ["a row without an id", JSON.stringify({ version: 1, nextIds: {}, exercises: [{ userId: 1 }], routines: [] })],
+    ["sessions that are not a list", JSON.stringify({ version: 1, nextIds: {}, sessions: {} })],
+    ["a session without sets", JSON.stringify({ version: 1, nextIds: {}, sessions: [{ id: 1, userId: 1, routineId: null, startedAt: "2026-01-01T00:00:00.000Z", finishedAt: null, notes: null }] })],
+    ["a set with a non-numeric weight", JSON.stringify({ version: 1, nextIds: {}, sessions: [{ id: 1, userId: 1, routineId: null, startedAt: "2026-01-01T00:00:00.000Z", finishedAt: null, notes: null, sets: [{ id: 1, exerciseId: 1, setNumber: 1, weightKg: "80", reps: 8, rpe: null, restSeconds: null, completedAt: "2026-01-01T00:00:00.000Z" }] }] })],
+    ["a session without a start time", JSON.stringify({ version: 1, nextIds: {}, sessions: [{ id: 1, userId: 1, routineId: null, startedAt: null, finishedAt: null, notes: null, sets: [] }] })],
     ["an invalid date", JSON.stringify({ version: 1, nextIds: {}, exercises: [{ id: 1, userId: 1, name: "A", muscleGroup: "legs", notes: null, archivedAt: "never" }], routines: [] })],
   ])("reports %s as corrupted", (_label, raw) => {
     const backing = new FakeStorage();

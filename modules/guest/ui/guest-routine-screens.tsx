@@ -18,6 +18,7 @@ import {
 } from "./guest-routine-forms";
 import { guestExerciseRepository, guestRoutineRepository as repo } from "./guest-runtime";
 import { GuestCommandError, GuestLoading, GuestStorageNotice } from "./guest-storage-notice";
+import { GuestStartSessionButton } from "./guest-session-screens";
 import { useGuestData } from "./use-guest-data";
 
 const LIST = "/guest/routines";
@@ -49,6 +50,9 @@ export function GuestRoutinesScreen() {
         archiveAction={archive}
         restoreAction={restore}
         basePath={LIST}
+        renderStart={(routine) => (
+          <GuestStartSessionButton routineId={routine.id} label="Start" ariaLabel={`Start ${routine.name}`} size="sm" />
+        )}
       />
     </section>
   );

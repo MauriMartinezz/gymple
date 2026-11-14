@@ -16,6 +16,9 @@ export function GuestHeader() {
           <Link href="/guest/routines" className="text-sm font-medium text-fg-muted hover:text-fg">
             Routines
           </Link>
+          <Link href="/guest/workouts" className="text-sm font-medium text-fg-muted hover:text-fg">
+            Workouts
+          </Link>
         </nav>
         <DeleteGuestDataButton />
       </div>
