@@ -17,14 +17,24 @@ Objective: admin, trainer and user roles; trainers coach many students (and stud
   - Roles are not exclusive: every account is a user (own exercises, routines, workouts, trainers); trainer and admin are capabilities added on top. A trainer can be another trainer's student (never their own).
   - Revoking a trainer only removes the trainer capability; the account, its own training data and its own trainers stay untouched.
   - Assumption: on revocation the trainer's links to their students are kept but suspended — the trainer loses access to the students' workouts and cannot add suggestions or comments, students see the trainer as inactive, existing suggestions and comments stay readable by the student. Certifying the same person again restores those links.
-- **Open (to confirm with the user):** what "sugerir cargas" targets; DNI scope.
+- **S8** — User's words: "Está bien que lo tengan solo entrenadores, que son personas certificadas por nosotros"
+  - Only trainers have a DNI; it is required to create or certify a trainer and is never asked of other users.
+  - Assumption: a DNI is 7 or 8 digits (dots and spaces accepted and stripped on input), unique among trainers.
+- **S9** — T1b behaviour (assumptions derived from S2, S7, S8):
+  - Admin capability: a flag on the account; there is no UI to grant it. The first admin is granted with a CLI script (`pnpm admin:grant <email>`). Admin pages live under `/admin`; every admin page and action checks the admin flag on the server (`requireAdmin()`); a non-admin gets a not-found page.
+  - "Dar de alta": the admin enters name, email and DNI; a new account is created (verified, since the admin vouches for it) with the trainer capability, and a "set your password" email is sent (better-auth password reset flow). If the email already has an account, the admin is pointed to certifying it instead.
+  - "Certificar": the admin finds an existing account by email and enters the DNI; it gains the trainer capability.
+  - "Dar de baja": revokes the trainer capability (S7); "Restore" re-certifies with the stored DNI.
+  - "Editar": the admin edits a trainer's name, email and DNI. Changing the email marks it unverified and sends a verification email to the new address.
+  - The admin list shows trainers (active and revoked) with name, email, DNI and status, newest first.
+- **Open (to confirm with the user):** what "sugerir cargas" targets.
 
 ## Tasks
 
 | ID | Specs | Route | Status | Evidence |
 |----|-------|-------|--------|----------|
 | T1a | S6 | delegated (context backstop) | done (400fa99, fix in next commit) | RED: module-missing for 5 unit files + integration test (verify-email-result test written after code); GREEN: `pnpm test` 451/451, `pnpm test:integration` 73/73, tsc, lint, build clean |
-| T1b | S1, S2 | — | pending: open decisions | — |
+| T1b | S1, S2, S7, S8, S9 | delegated (context backstop) | in progress | — |
 | T2 | S3, S4 | inline | pending | — |
 | T3 | S3 | inline | pending | — |
 | T4 | S5 | inline | pending | — |
@@ -44,3 +54,4 @@ Objective: admin, trainer and user roles; trainers coach many students (and stud
 - **L5** T1a written by a bounded writer (commit 400fa99): `createAuth` factory takes the `EmailSender`; `requireEmailVerification`, `sendOnSignUp`, `sendOnSignIn` on, auto sign-in after verification off; verification links land on `/verify-email?status=verified` (better-auth appends `error=<CODE>` on a bad token); duplicate sign-up returns a generic 200 and sends nothing; SMTP config required in production (checked on first email), Mailpit defaults otherwise; nodemailer 10.5.0 pinned. Independent verifier launched (risk items 2 and 5).
 - **L6** Independent verifier: every S6 item PASS, no blockers (probes: no account enumeration, no open redirect outside NODE_ENV=test, sign-up rate limited 3/10 s, verified login unchanged). Advisory 4 fixed by the parent: the verification email no longer includes the name typed at sign-up (anyone can sign up with someone else's address); RED 1 test → GREEN. Open advisories: SMTP failure only logged (user recovers by signing in); production SMTP misconfig surfaces on first send; Vitest disables better-auth origin checks, so redirect/CSRF protection is not pinned by the suite.
 - **L7** (2026-11-13) User: "Estoy pensando algo, un entrenador puede ser a su vez un asesorado de otro entrenador, es algo bastante comun. Si un administrador da de baja un entrenador solamente deja de poder ejercer sus funciones de entrenador" → S7 (non-exclusive capabilities; revocation keeps links suspended, assumption).
+- **L8** (2026-11-13) User: "Está bien que lo tengan solo entrenadores, que son personas certificadas por nosotros" → S8; T1b behaviour written as S9 (assumptions). Risk items for T1b: 1 (migration adding columns/table), 2 (admin permissions).
