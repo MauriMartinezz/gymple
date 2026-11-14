@@ -125,6 +125,15 @@ without a valid link, it offers to email a new one, which is also how anyone
 who forgot their password resets it ("Forgot your password?" on the sign-in
 page). The answer never reveals whether an email has an account.
 
+## Guest mode
+
+Anyone can try Gymple without an account: "Continue as guest" on `/login` and `/signup` opens `/guest`.
+
+- Guest data never reaches the server. Exercises and routines are saved in this browser's `localStorage` under one versioned key (`gymple.guest`); guest pages use no session, server action or database.
+- The same domain rules and use cases run in the browser, through browser adapters of the repository ports (`modules/guest/infrastructure`) that pass the same contract suites as the MySQL adapters.
+- "Delete guest data" (in the guest header) clears everything after a confirmation. Blocked or full storage, and unreadable saved data, show a message instead of failing silently.
+- Guest data is not moved into an account on sign-up. Workouts for guests are coming next; trainers, admin and coaching are for accounts only.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

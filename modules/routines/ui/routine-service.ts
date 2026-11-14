@@ -4,6 +4,7 @@ import { requireUser } from "@/modules/auth/infrastructure/session";
 import { loadExercises } from "@/modules/exercises/ui/exercise-service";
 import { getRoutine, listRoutines } from "../application/routine-use-cases";
 import { DrizzleRoutineRepository } from "../infrastructure/drizzle-routine-repository";
+import { toExerciseOptions } from "./exercise-options";
 import type { ExerciseOption } from "./routine-form";
 
 export { parseRoutineId } from "./parse-routine-id";
@@ -27,12 +28,5 @@ export async function loadRoutine(id: number) {
  * ones the routine already uses so they can be kept.
  */
 export async function loadExerciseOptions(usedExerciseIds: number[] = []): Promise<ExerciseOption[]> {
-  const { active, archived } = await loadExercises();
-  const used = new Set(usedExerciseIds);
-  return [
-    ...active.map((exercise) => ({ id: exercise.id, name: exercise.name, archived: false })),
-    ...archived
-      .filter((exercise) => used.has(exercise.id))
-      .map((exercise) => ({ id: exercise.id, name: exercise.name, archived: true })),
-  ];
+  return toExerciseOptions(await loadExercises(), usedExerciseIds);
 }

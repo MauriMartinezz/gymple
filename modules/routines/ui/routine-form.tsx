@@ -19,7 +19,7 @@ import {
   TARGET_SETS,
   type RoutineItemErrors,
 } from "../domain/routine";
-import type { RoutineFormState } from "./actions";
+import type { RoutineFormState } from "./routine-form-state";
 import {
   itemFieldName,
   type RoutineFormValues,
@@ -38,6 +38,8 @@ interface RoutineFormProps {
   exercises: ExerciseOption[];
   initialValues?: RoutineFormValues;
   submitLabel: string;
+  /** Where Cancel goes; guest pages pass their own list. */
+  cancelHref?: string;
 }
 
 const defaultItem: RoutineItemFormValues = {
@@ -73,6 +75,7 @@ export function RoutineForm({
   exercises,
   initialValues = emptyValues,
   submitLabel,
+  cancelHref = "/routines",
 }: RoutineFormProps) {
   const [state, formAction, pending] = useActionState(action, {
     errors: {},
@@ -184,7 +187,7 @@ export function RoutineForm({
       </fieldset>
 
       <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-        <Link href="/routines" className={buttonClass("secondary")}>
+        <Link href={cancelHref} className={buttonClass("secondary")}>
           Cancel
         </Link>
         <button type="submit" disabled={pending} className={buttonClass("primary")}>

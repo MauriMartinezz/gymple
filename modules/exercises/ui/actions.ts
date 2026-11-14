@@ -10,27 +10,23 @@ import {
   updateExercise,
   type ExerciseCommandResult,
 } from "../application/exercise-use-cases";
-import type { ExerciseErrors } from "../domain/exercise";
+import {
+  exerciseFormStateFor,
+  readExerciseForm,
+  type ExerciseFormState,
+  type ExerciseFormValues,
+} from "./exercise-form-state";
 import { exerciseRepository } from "./exercise-service";
 import { parseExerciseId } from "./parse-exercise-id";
 
-export interface ExerciseFormValues {
-  name: string;
-  muscleGroup: string;
-  notes: string;
-}
-
-export interface ExerciseFormState {
-  errors: ExerciseErrors & { form?: string };
-  values: ExerciseFormValues;
-}
+export type { ExerciseFormState, ExerciseFormValues } from "./exercise-form-state";
 
 export async function createExerciseAction(
   _prev: ExerciseFormState,
   formData: FormData,
 ): Promise<ExerciseFormState> {
   const user = await requireUser();
-  const values = readValues(formData);
+  const values = readExerciseForm(formData);
   const result = await createExercise(exerciseRepository, user.id, values);
   return finish(result, values);
 }
@@ -42,7 +38,7 @@ export async function updateExerciseAction(
   formData: FormData,
 ): Promise<ExerciseFormState> {
   const user = await requireUser();
-  const values = readValues(formData);
+  const values = readExerciseForm(formData);
   const id = parseExerciseId(rawId);
   const result: ExerciseCommandResult = id
     ? await updateExercise(exerciseRepository, user.id, id, values)
@@ -68,17 +64,7 @@ async function setArchived(formData: FormData, archived: boolean): Promise<void>
 }
 
 function finish(result: ExerciseCommandResult, values: ExerciseFormValues): ExerciseFormState {
-  if (result.ok) redirect("/exercises");
-  if (result.reason === "not_found") {
-    return { errors: { form: "This exercise no longer exists." }, values };
-  }
-  return { errors: result.errors, values };
-}
-
-function readValues(formData: FormData): ExerciseFormValues {
-  const text = (key: string) => {
-    const value = formData.get(key);
-    return typeof value === "string" ? value : "";
-  };
-  return { name: text("name"), muscleGroup: text("muscleGroup"), notes: text("notes") };
+  const state = exerciseFormStateFor(result, values);
+  if (!state) redirect("/exercises");
+  return state;
 }

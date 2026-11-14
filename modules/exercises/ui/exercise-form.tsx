@@ -15,17 +15,24 @@ import {
   MUSCLE_GROUPS,
   MUSCLE_GROUP_LABELS,
 } from "../domain/exercise";
-import type { ExerciseFormState, ExerciseFormValues } from "./actions";
+import type { ExerciseFormState, ExerciseFormValues } from "./exercise-form-state";
 
 interface ExerciseFormProps {
   action: (state: ExerciseFormState, formData: FormData) => Promise<ExerciseFormState>;
   initialValues?: ExerciseFormValues;
   submitLabel: string;
+  /** Where Cancel goes; guest pages pass their own list. */
+  cancelHref?: string;
 }
 
 const emptyValues: ExerciseFormValues = { name: "", muscleGroup: "", notes: "" };
 
-export function ExerciseForm({ action, initialValues = emptyValues, submitLabel }: ExerciseFormProps) {
+export function ExerciseForm({
+  action,
+  initialValues = emptyValues,
+  submitLabel,
+  cancelHref = "/exercises",
+}: ExerciseFormProps) {
   const [state, formAction, pending] = useActionState(action, {
     errors: {},
     values: initialValues,
@@ -113,7 +120,7 @@ export function ExerciseForm({ action, initialValues = emptyValues, submitLabel 
       </div>
 
       <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-        <Link href="/exercises" className={buttonClass("secondary")}>
+        <Link href={cancelHref} className={buttonClass("secondary")}>
           Cancel
         </Link>
         <button type="submit" disabled={pending} className={buttonClass("primary")}>

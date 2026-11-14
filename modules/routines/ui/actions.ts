@@ -10,15 +10,12 @@ import {
   updateRoutine,
   type RoutineCommandResult,
 } from "../application/routine-use-cases";
-import type { RoutineErrors } from "../domain/routine";
 import { readRoutineForm, type RoutineFormValues } from "./parse-routine-form";
 import { parseRoutineId } from "./parse-routine-id";
+import { routineFormStateFor, type RoutineFormState } from "./routine-form-state";
 import { routineRepository } from "./routine-service";
 
-export interface RoutineFormState {
-  errors: RoutineErrors & { form?: string };
-  values: RoutineFormValues;
-}
+export type { RoutineFormState } from "./routine-form-state";
 
 export async function createRoutineAction(
   _prev: RoutineFormState,
@@ -63,9 +60,7 @@ async function setArchived(formData: FormData, archived: boolean): Promise<void>
 }
 
 function finish(result: RoutineCommandResult, values: RoutineFormValues): RoutineFormState {
-  if (result.ok) redirect("/routines");
-  if (result.reason === "not_found") {
-    return { errors: { form: "This routine no longer exists." }, values };
-  }
-  return { errors: result.errors, values };
+  const state = routineFormStateFor(result, values);
+  if (!state) redirect("/routines");
+  return state;
 }

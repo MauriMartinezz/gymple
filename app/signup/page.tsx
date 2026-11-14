@@ -27,6 +27,7 @@ export default function SignUpPage({ searchParams }: PageProps<"/signup">) {
             <Suspense fallback={<SignInLink next={null} />}>
               <SignInLinkFor next={next} />
             </Suspense>
+            <GuestLink />
           </>
         }
       >
@@ -56,5 +57,17 @@ function SignInLink({ next }: { next: string | null }) {
     <Link href={loginHref(next)} className="font-medium text-primary hover:underline">
       Sign in
     </Link>
+  );
+}
+
+/** Guest mode keeps data in this browser only (S5). */
+function GuestLink() {
+  return (
+    <span className="mt-2 block">
+      Just looking?{" "}
+      <Link href="/guest" className="font-medium text-primary hover:underline">
+        Continue as guest
+      </Link>
+    </span>
   );
 }
