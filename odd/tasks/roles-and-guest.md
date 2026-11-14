@@ -36,6 +36,11 @@ Objective: admin, trainer and user roles; trainers coach many students (and stud
   - Students list their trainers (active or inactive) and can leave one; trainers list their students and can remove one. Leaving or removing deletes the link.
   - An active trainer sees a student's finished workouts (history and detail, read-only) and the student's exercise names; never active workouts, routines editing, or anything of non-students. Revoked trainers see nothing (links suspended, S7).
 - **S12** — Comments/reviews ("agregar reseñas o comentarios"), T3: assumption — an active trainer comments on a student's finished workout; the student reads them on the workout detail.
+- **S13** — T4 behaviour (assumptions derived from S5):
+  - Entry: "Continue as guest" on `/login` and `/signup` opens `/guest`, a separate route tree that needs no session and never calls the server for data (no server actions, no database). A banner on every guest page says the data lives only in this browser and links to "Create an account".
+  - Guests get exercises, routines and workouts (start, log/edit/delete sets, finish with the S8 routine-update choice, history and detail) with the same domain rules and use cases: browser adapters implement the existing repository ports, persist to `localStorage` under one versioned key, and pass the same shared contract suites as the in-memory and MySQL adapters. Trainers, admin and coaching are not available to guests.
+  - Guest pages reuse the existing presentational components and forms, passing browser-side functions with the same `(state, formData)` signature instead of server actions.
+  - A "Delete guest data" action clears everything after a confirmation step. Storage unavailable or full shows a clear message instead of failing silently. Data is not imported into an account on sign-up (follow-up).
 
 ## Tasks
 
@@ -45,13 +50,15 @@ Objective: admin, trainer and user roles; trainers coach many students (and stud
 | T1b | S1, S2, S7, S8, S9 | delegated (context backstop) | done (bddfe29, fixes in next commit) | RED: module-missing for every new test file; GREEN: `pnpm test` 559/559, `pnpm test:integration` 102/102, build, tsc, lint clean; mutations (requireAdmin removed from revoke/restore: 6 fail; swapped for requireUser in create: 2 fail) killed |
 | T2 | S3, S4, S7, S11 | delegated (context backstop) | done (93a4344, fix 8bf5d7c) | RED: module-missing for 5 unit files, then actions/loaders; GREEN: `pnpm test` 682/682, `pnpm test:integration` 118/118, build, tsc, lint clean; mutations (no active-trainer condition: 5 fail; no link condition: 7 fail; active workouts shown: 2 fail; no self-join check: 3 fail) killed |
 | T3 | S3, S10, S12 | delegated (context backstop) | done (ad540ac) | RED: module-missing for new files, 3 session-view assertion failures; GREEN: `pnpm test` 767/767, `pnpm test:integration` 131/131, build, tsc, lint clean; mutations (no active-trainer check: 2 fail; no exercise ownership: 4 fail; no finished-workout check on comments: 1 fail) killed |
-| T4 | S5 | inline | pending | — |
+| T4a | S5, S13 | delegated (context backstop) | in progress | — |
+| T4b | S5, S13 | — | pending (after T4a) | — |
 
 - T1a — Sign-up with email verification: `EmailSender` port + SMTP adapter + fake, better-auth verification config, `/signup` and verification-result pages, login handling of unverified accounts, Mailpit service, seed marks accounts verified, docs. Risk: items 2 (auth) and 5 (new dependency).
 - T1b — Roles and admin (S1, S2, S7): admin flag and trainer status on users (+ migration), first admin via seed, admin screens to create/certify, deactivate and edit trainers.
 - T2 — Trainer–student links: many-to-many table, trainer profile invite link, join/leave, trainer's student list and read-only view of their workouts.
 - T3 — Trainer feedback: load suggestions and comments/reviews on students' workouts.
-- T4 — Guest mode: browser-storage repositories (exercises, routines, sessions) behind the existing ports, client-run use cases, "Continue as guest" entry, no server writes.
+- T4a — Guest foundation: browser storage, guest shell (`/guest`, banner, entry links, delete data), exercises and routines.
+- T4b — Guest workouts: sessions repository and unit of work in the browser, active workout, finish with routine update, history and detail.
 
 ## Log
 
@@ -70,3 +77,4 @@ Objective: admin, trainer and user roles; trainers coach many students (and stud
 - **L13** Independent verifier on T2: S4, S7 and S11 PASS except one blocker — open redirect through `?next=` (`/.//evil.com` resolved to `//evil.com` after `new URL`). Parent fix 8bf5d7c re-checks the resolved path (RED 5 tests → GREEN); recheck limited to the blocker: PASS (encoded `%2f`/`%5c` stay same-origin). Open advisories: first-visit race on `/students` can render a stale invite link; a code collision (~2^-128) would leave a trainer without a code; trainers see students' emails (writer assumption). Follow-up (not blocking): returning to the join link after verifying the email in a new tab needs `next` carried through the verification link.
 - **L14** T3 written by a bounded writer (commit ad540ac): `load_suggestions` (unique per trainer/student/exercise, upsert) and `workout_comments` (migration 0005); session validation helpers exported and shared; the active page passes effective suggestions into `loadActiveSession` (coaching depends on sessions, not the reverse). Writer assumptions: suggestions only on active exercises; a revoked trainer cannot withdraw; leaving a trainer hides their suggestions like revocation; a trainer sees only their own comments on a shared student's workout (student sees all). Open: should co-trainers see each other's comments? Independent verifier launched (items 1, 2, 3).
 - **L15** Independent verifier on T3: every S10/S12/S7 bullet PASS, no blockers; `validateSetInput`/`validateSessionNotes` byte-identical to baseline over ~400 edge inputs; `buildActiveSessionView` without suggestions identical to baseline over 40 cases (only the new `suggestion: null` field); migration 0004→0005 clean with data. Advisories: the delete-workout confirmation now mentions trainer comments and the student page's "Finished workouts" became a heading; `/trainers` still lists suggestions for archived exercises (they never prefill); leaving keeps suggestion rows, so rejoining the same trainer brings them back; trainers cannot delete old comments once unlinked and students never can; a suggestion saved during an active workout changes the prefill of exercises with no sets yet.
+- **L16** The co-trainer comment visibility question got no answer; current behaviour stays (each trainer sees only their own comments; the student sees all). T4 written as S13 and split into T4a/T4b. Finding: forms already take `action: (state, formData) => Promise<state>`, and every repository has a shared contract suite, so browser adapters can be proven equivalent.
