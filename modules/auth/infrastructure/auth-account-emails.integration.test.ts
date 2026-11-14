@@ -87,6 +87,20 @@ describe("creating a trainer account", () => {
     expect(response.headers.get("set-cookie")).toContain("session_token");
   });
 
+  it("signs out every other device when the password is reset", async () => {
+    await createTrainer(deps, ana);
+    await post("/reset-password", { token: await tokenFromSetPasswordEmail(ana.email), newPassword: "trainer-pass-1" });
+    const cookie = (await signIn(ana.email, "trainer-pass-1")).headers.get("set-cookie")!.split(";")[0];
+    const session = () => auth.handler(new Request(`${baseURL}/api/auth/get-session`, { headers: { cookie } }));
+    expect(await (await session()).json()).toMatchObject({ user: { email: ana.email } });
+
+    emails.clear();
+    await post("/request-password-reset", { email: ana.email, redirectTo: "/reset-password" });
+    await post("/reset-password", { token: await tokenFromSetPasswordEmail(ana.email), newPassword: "trainer-pass-2" });
+
+    expect(await (await session()).json()).toBeNull();
+  });
+
   it("uses the link only once", async () => {
     await createTrainer(deps, ana);
     const token = await tokenFromSetPasswordEmail(ana.email);

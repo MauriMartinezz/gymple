@@ -50,6 +50,8 @@ export function createAuth({ db, emailSender, baseURL, secret, rateLimit = true 
       enabled: true,
       // Open sign-up, but no session until the email is verified (spam control).
       requireEmailVerification: true,
+      // A new password signs out every other device.
+      revokeSessionsOnPasswordReset: true,
       // Also how trainer accounts created by an admin choose their first
       // password (the link lands on /reset-password). Tokens are single-use
       // and expire after better-auth's default of 1 hour.

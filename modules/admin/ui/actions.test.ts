@@ -158,7 +158,7 @@ describe("createTrainerAction", () => {
 
 describe("certifyTrainerAction", () => {
   it("certifies an existing account and redirects to the list", async () => {
-    const id = state.trainers.addAccount({ name: "Carla", email: "carla@example.com" });
+    const id = state.trainers.addAccount({ name: "Carla", email: "carla@example.com", emailVerified: true });
 
     const result = await outcome(() =>
       certifyTrainerAction(emptyCertifyState, form({ email: "carla@example.com", dni: "7654321" })),

@@ -78,6 +78,8 @@ export async function certifyTrainer(
 
   const account = await deps.trainers.findAccountByEmail(email);
   if (!account) return invalid({ email: "No account uses this email." });
+  // Anyone can sign up with someone else's address; only its owner can verify it.
+  if (!account.emailVerified) return invalid({ email: "This account has not verified its email yet." });
 
   const existing = await deps.trainers.findByUserId(account.userId);
   if (existing) return invalid({ email: alreadyTrainerMessage(existing) });

@@ -98,6 +98,20 @@ describe("certifyTrainer", () => {
     expect(emails.sent).toEqual([]);
   });
 
+  // Whoever signs up first with an address holds the account until it is verified.
+  it("refuses an account whose email is not verified yet", async () => {
+    trainers.addAccount({ name: "Carla", email: "carla@example.com", emailVerified: false });
+
+    const result = await certifyTrainer(deps, { email: "carla@example.com", dni: "7654321" });
+
+    expect(result).toEqual({
+      ok: false,
+      reason: "invalid",
+      errors: { email: "This account has not verified its email yet." },
+    });
+    expect(await trainers.list()).toEqual([]);
+  });
+
   it("reports an email without an account", async () => {
     const result = await certifyTrainer(deps, { email: "nobody@example.com", dni: "7654321" });
 
@@ -131,7 +145,7 @@ describe("certifyTrainer", () => {
 
   it("rejects a DNI another trainer has", async () => {
     await createTrainer(deps, ana);
-    const id = trainers.addAccount({ name: "Carla", email: "carla@example.com" });
+    const id = trainers.addAccount({ name: "Carla", email: "carla@example.com", emailVerified: true });
 
     const result = await certifyTrainer(deps, { email: "carla@example.com", dni: "12345678" });
 
