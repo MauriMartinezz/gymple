@@ -10,6 +10,7 @@ import {
   verifications,
 } from "@/infrastructure/db/schema";
 import type { EmailSender } from "@/infrastructure/email/email-sender";
+import { setPasswordEmail } from "../application/set-password-email";
 import { verificationEmail, verificationLink } from "../application/verification-email";
 import { signInRateLimitFromEnv } from "./sign-in-rate-limit";
 
@@ -23,6 +24,8 @@ export interface AuthDependencies {
   /** Tests turn the limiter off; the app always keeps it on. */
   rateLimit?: boolean;
 }
+
+export type Auth = ReturnType<typeof createAuth>;
 
 export function createAuth({ db, emailSender, baseURL, secret, rateLimit = true }: AuthDependencies) {
   return betterAuth({
@@ -47,6 +50,12 @@ export function createAuth({ db, emailSender, baseURL, secret, rateLimit = true 
       enabled: true,
       // Open sign-up, but no session until the email is verified (spam control).
       requireEmailVerification: true,
+      // Also how trainer accounts created by an admin choose their first
+      // password (the link lands on /reset-password). Tokens are single-use
+      // and expire after better-auth's default of 1 hour.
+      sendResetPassword: async ({ user, url }) => {
+        await emailSender.send(setPasswordEmail(user, url));
+      },
     },
     emailVerification: {
       sendOnSignUp: true,

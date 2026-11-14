@@ -36,7 +36,7 @@ export function verificationEmail(user: { name: string; email: string }, link: s
   return { to: user.email, subject, text, html };
 }
 
-function escapeHtml(value: string): string {
+export function escapeHtml(value: string): string {
   return value
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")

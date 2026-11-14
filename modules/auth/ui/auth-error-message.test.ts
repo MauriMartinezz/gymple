@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { signInErrorMessage, signUpErrorMessage } from "./auth-error-message";
+import { resetPasswordErrorMessage, signInErrorMessage, signUpErrorMessage } from "./auth-error-message";
 
 describe("signInErrorMessage", () => {
   it("tells unverified users to check their inbox", () => {
@@ -39,5 +39,23 @@ describe("signUpErrorMessage", () => {
 
   it("falls back to a generic message", () => {
     expect(signUpErrorMessage({ status: 500 })).toBe("Something went wrong. Please try again.");
+  });
+});
+
+describe("resetPasswordErrorMessage", () => {
+  it.each([
+    ["INVALID_TOKEN", "This link is not valid or has expired. Ask for a new one below."],
+    ["PASSWORD_TOO_SHORT", "Password must be at least 8 characters."],
+    ["PASSWORD_TOO_LONG", "Password must be at most 128 characters."],
+  ])("maps %s", (code, message) => {
+    expect(resetPasswordErrorMessage({ status: 400, code })).toBe(message);
+  });
+
+  it("reports the rate limit", () => {
+    expect(resetPasswordErrorMessage({ status: 429 })).toBe("Too many attempts. Please try again later.");
+  });
+
+  it("falls back to a generic message", () => {
+    expect(resetPasswordErrorMessage({ status: 500 })).toBe("Something went wrong. Please try again.");
   });
 });

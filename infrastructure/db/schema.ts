@@ -43,6 +43,9 @@ export const users = mysqlTable(
     name: varchar({ length: 120 }).notNull(),
     emailVerified: boolean("email_verified").notNull().default(false),
     image: text(),
+    // Ours, not Better Auth's: it never reads or writes it. Granted only by
+    // `pnpm admin:grant <email>`.
+    isAdmin: boolean("is_admin").notNull().default(false),
     createdAt,
     updatedAt,
   },
@@ -116,6 +119,31 @@ export const rateLimits = mysqlTable(
     lastRequest: bigint("last_request", { mode: "number" }).notNull(),
   },
   (table) => [uniqueIndex("rate_limits_key_uq").on(table.key)],
+);
+
+/*
+ * The trainer capability (S7, S8): a user with a row here is a trainer while
+ * `revoked_at` is null. Revoking keeps the row and its DNI so the admin can
+ * restore it, and so links to students can stay suspended instead of deleted.
+ * The id gives a stable "most recently certified first" order.
+ */
+export const trainers = mysqlTable(
+  "trainers",
+  {
+    id: int().primaryKey().autoincrement(),
+    userId: int("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    // 7 or 8 digits, normalized by the domain. Unique among trainers, revoked ones included.
+    dni: varchar({ length: 8 }).notNull(),
+    revokedAt: timestamp("revoked_at", { mode: "date" }),
+    createdAt,
+    updatedAt,
+  },
+  (table) => [
+    uniqueIndex("trainers_user_uq").on(table.userId),
+    uniqueIndex("trainers_dni_uq").on(table.dni),
+  ],
 );
 
 export const exercises = mysqlTable(
@@ -220,6 +248,10 @@ export const usersRelations = relations(users, ({ many }) => ({
   exercises: many(exercises),
   routines: many(routines),
   workoutSessions: many(workoutSessions),
+}));
+
+export const trainersRelations = relations(trainers, ({ one }) => ({
+  user: one(users, { fields: [trainers.userId], references: [users.id] }),
 }));
 
 export const sessionsRelations = relations(sessions, ({ one }) => ({

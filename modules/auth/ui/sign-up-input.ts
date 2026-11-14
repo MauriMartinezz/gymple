@@ -10,8 +10,8 @@ export type SignUpParseResult = { ok: true; value: SignUpInput } | { ok: false; 
 
 // Mirrors better-auth's defaults (8–128 characters), so users see the rule
 // before the request.
-const MIN_PASSWORD = 8;
-const MAX_PASSWORD = 128;
+export const MIN_PASSWORD = 8;
+export const MAX_PASSWORD = 128;
 const MAX_NAME = 100;
 
 export function parseSignUpInput(form: FormData): SignUpParseResult {

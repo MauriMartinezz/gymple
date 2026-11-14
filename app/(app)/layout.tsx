@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Suspense } from "react";
-import { requireUser } from "@/modules/auth/infrastructure/session";
+import { isCurrentUserAdmin, requireUser } from "@/modules/auth/infrastructure/session";
 import { SignOutButton } from "@/modules/auth/ui/sign-out-button";
 
 /*
@@ -26,6 +26,9 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
             <Link href="/sessions" className="text-sm font-medium text-fg-muted hover:text-fg">
               Workouts
             </Link>
+            <Suspense fallback={null}>
+              <AdminLink />
+            </Suspense>
           </nav>
           <Suspense fallback={null}>
             <UserMenu />
@@ -53,5 +56,15 @@ async function UserMenu() {
       <span className="hidden text-sm text-fg-muted sm:inline">{user.email}</span>
       <SignOutButton />
     </div>
+  );
+}
+
+/** Only admins see the link; the admin pages check the flag again on the server. */
+async function AdminLink() {
+  if (!(await isCurrentUserAdmin())) return null;
+  return (
+    <Link href="/admin" className="text-sm font-medium text-fg-muted hover:text-fg">
+      Admin
+    </Link>
   );
 }

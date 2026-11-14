@@ -39,6 +39,46 @@ Both are required in production. In development, `pnpm db:up` also starts
 <http://localhost:8025> to read them. `MAILPIT_SMTP_PORT` and `MAILPIT_UI_PORT`
 change its ports.
 
+## Roles: users, trainers and admins
+
+Every account is a user, with its own exercises, routines and workouts.
+Trainer and admin are capabilities added on top of the account; one account
+can have both.
+
+- **Admin**: a flag on the account. There is no screen to grant it; grant it
+  to an existing account with:
+
+  ```bash
+  pnpm admin:grant <email>
+  ```
+
+  It prints the result and exits with code 1 when the email has no account.
+  Admins see an **Admin** link in the header. Every page under `/admin` and
+  every admin action checks the flag in the database; anyone else gets the
+  not-found page.
+- **Trainer**: only trainers have a DNI (7 or 8 digits; dots and spaces are
+  ignored), unique among trainers. From `/admin` an admin can:
+  - **New trainer**: name, email and DNI. Creates a verified account and
+    emails a link to choose a password. If the email already has an account,
+    the form points to certifying it instead.
+  - **Certify existing account**: email and DNI. The account becomes a trainer.
+  - **Revoke** / **Restore**: revoking removes only the trainer capability;
+    the account and its own data stay. Restoring keeps the DNI on file.
+  - **Edit**: name, email and DNI. A new email is marked unverified and
+    receives a verification link; the account cannot sign in again until it
+    is verified.
+
+The trainer list shows active and revoked trainers, most recently certified
+first.
+
+### Choosing or resetting a password
+
+`/reset-password` is where the "choose your password" link lands (better-auth's
+password reset flow, links are single-use and expire after one hour). Opened
+without a valid link, it offers to email a new one, which is also how anyone
+who forgot their password resets it ("Forgot your password?" on the sign-in
+page). The answer never reveals whether an email has an account.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

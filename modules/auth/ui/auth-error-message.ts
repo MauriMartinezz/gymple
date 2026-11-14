@@ -31,3 +31,14 @@ export function signUpErrorMessage(error: AuthError): string {
   if (error.status === 429) return "Too many sign-up attempts. Please try again later.";
   return (error.code && SIGN_UP_MESSAGES[error.code]) || GENERIC;
 }
+
+const RESET_PASSWORD_MESSAGES: Record<string, string> = {
+  INVALID_TOKEN: "This link is not valid or has expired. Ask for a new one below.",
+  PASSWORD_TOO_SHORT: SIGN_UP_MESSAGES.PASSWORD_TOO_SHORT,
+  PASSWORD_TOO_LONG: SIGN_UP_MESSAGES.PASSWORD_TOO_LONG,
+};
+
+export function resetPasswordErrorMessage(error: AuthError): string {
+  if (error.status === 429) return "Too many attempts. Please try again later.";
+  return (error.code && RESET_PASSWORD_MESSAGES[error.code]) || GENERIC;
+}

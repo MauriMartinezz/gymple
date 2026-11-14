@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
 import { buttonClass, inputClass, labelClass } from "@/shared/ui/styles";
@@ -64,9 +65,14 @@ export function LoginForm() {
       </div>
 
       <div className="flex flex-col gap-1.5">
-        <label htmlFor="password" className={labelClass}>
-          Password
-        </label>
+        <div className="flex items-baseline justify-between gap-2">
+          <label htmlFor="password" className={labelClass}>
+            Password
+          </label>
+          <Link href="/reset-password" className="text-sm font-medium text-primary hover:underline">
+            Forgot your password?
+          </Link>
+        </div>
         <input
           id="password"
           name="password"
