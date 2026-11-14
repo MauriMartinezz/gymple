@@ -10,18 +10,23 @@ Objective: admin, trainer and user roles; trainers coach many students (and stud
 - **S4** — User's words: "Los usuarios pueden tener muchos entrenadores y los entrenadores muchos alumnos obviamente."
 - **S5** — User's words: "También se podrá entrar a la aplicación como Invitado sin loguearse para que no sea obligatorio tener una cuenta para probar la aplicación" and "Lo que quiero que pase cuando carga algo un anónimo se guarde en el navegador, no quiero persistir datos de gente que no tiene cuenta".
   - Guest data never reaches the server; it lives in browser storage and runs the same domain rules and use cases through browser adapters of the repository ports.
-- **Open (to confirm with the user):** who can create accounts (today sign-up is disabled; the invite link needs students to have accounts); what "sugerir cargas" targets; DNI scope.
+- **S6** — User's words: "Registro por invitacion o que requiera validacion por email para evitar tantas cuentas spam"
+  - Decision: open sign-up (name, email, password) with mandatory email verification for everyone, invited or not — the trainer link is public, so an invitation alone does not stop spam. An unverified account cannot sign in; trying to sign in re-sends the verification email. New accounts get the `user` role. Accounts created by `pnpm db:seed` are marked verified.
+  - Assumption: emails go through an `EmailSender` port; production uses SMTP (nodemailer, configured by `SMTP_URL` and `EMAIL_FROM`), development uses a Mailpit container in `docker-compose.yml`, tests use an in-memory fake. Verification links use better-auth's default expiry.
+- **Open (to confirm with the user):** what "sugerir cargas" targets; DNI scope; whether "dar de baja" a trainer removes the trainer role or blocks the account.
 
 ## Tasks
 
 | ID | Specs | Route | Status | Evidence |
 |----|-------|-------|--------|----------|
-| T1 | S1, S2 | inline | pending: product decisions | — |
+| T1a | S6 | delegated (context backstop) | in progress | — |
+| T1b | S1, S2 | — | pending: open decisions | — |
 | T2 | S3, S4 | inline | pending | — |
 | T3 | S3 | inline | pending | — |
 | T4 | S5 | inline | pending | — |
 
-- T1 — Accounts and roles: role on users (+ migration), sign-up per the open decision, first admin via seed, admin screens to create/certify, deactivate and edit trainers.
+- T1a — Sign-up with email verification: `EmailSender` port + SMTP adapter + fake, better-auth verification config, `/signup` and verification-result pages, login handling of unverified accounts, Mailpit service, seed marks accounts verified, docs. Risk: items 2 (auth) and 5 (new dependency).
+- T1b — Roles and admin: role on users (+ migration), first admin via seed, admin screens to create/certify, deactivate and edit trainers.
 - T2 — Trainer–student links: many-to-many table, trainer profile invite link, join/leave, trainer's student list and read-only view of their workouts.
 - T3 — Trainer feedback: load suggestions and comments/reviews on students' workouts.
 - T4 — Guest mode: browser-storage repositories (exercises, routines, sessions) behind the existing ports, client-run use cases, "Continue as guest" entry, no server writes.
@@ -30,4 +35,5 @@ Objective: admin, trainer and user roles; trainers coach many students (and stud
 
 - **L1** (2026-11-13) User: "Bueno, me gustaría hacer lo siguiente: 3 roles: entrenador, administrador y usaurio. El administrador puede dar de alta o certificar entrenadores, dar de baja a los mismos, editar valores como nombres, emails, dni, etc. Los entrenadores pueden tener entrenados y un link para su perfil para que se sumen sus alumnos, ver los entrenamientos de los alumnos y sugerir cargas, agregar reseñas o comentarios. Los usuarios pueden tener muchos entrenadores y los entrenadores muchos alumnos obviamente. También se podrá entrar a la aplicación como Invitado sin loguearse para que no sea obligatorio tener una cuenta para probar la aplicación"
 - **L2** (2026-11-13) User: "Lo que quiero que pase cuando carga algo un anónimo se guarde en el navegador, no quiero persistir datos de gente que no tiene cuenta"
+- **L4** (2026-11-13) User: "1) Registro por invitacion o que requiera validacion por email para evitar tantas cuentas spam" → S6; T1 split into T1a (sign-up) and T1b (roles/admin).
 - **L3** Finding: sign-up is disabled (`modules/auth/infrastructure/better-auth.ts`, `disableSignUp: true`; accounts come from `pnpm db:seed`). Every page and action is server-side and scoped by `requireUser()`, so guest mode needs client-side adapters and UI wiring (T4). Risk items expected: 2 (auth, roles, permissions) in T1–T3, 1 (migrations) in T1–T2.
