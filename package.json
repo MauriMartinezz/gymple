@@ -17,14 +17,15 @@
     "db:seed": "tsx scripts/seed.ts",
     "admin:grant": "tsx scripts/grant-admin.ts",
     "test:integration": "vitest run --config vitest.integration.config.ts",
-    "db:test:create": "docker compose exec -T mysql sh -c 'mysql -uroot -p\"$MYSQL_ROOT_PASSWORD\" < /docker-entrypoint-initdb.d/01-test-database.sql'"
+    "db:test:create": "docker compose exec -T postgres sh -c 'psql -v ON_ERROR_STOP=1 -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\" -f /docker-entrypoint-initdb.d/01-test-database.sql'"
   },
   "dependencies": {
+    "@vercel/functions": "3.11.4",
     "better-auth": "1.7.18",
     "drizzle-orm": "0.45.4",
-    "mysql2": "3.24.6",
     "next": "16.4.6",
     "nodemailer": "10.5.0",
+    "pg": "8.23.1",
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "server-only": "0.0.1"
@@ -33,6 +34,7 @@
     "@tailwindcss/turbopack": "4.3.3",
     "@types/node": "^20",
     "@types/nodemailer": "8.0.2",
+    "@types/pg": "8.23.1",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "drizzle-kit": "0.31.11",

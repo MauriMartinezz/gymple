@@ -15,7 +15,7 @@ import type { DeleteSetState, FinishFormState, SetFormState, StartSessionState }
 
 /*
  * What each workout form does with its FormData, for one already resolved
- * user: shared by the server actions (MySQL) and the guest form functions
+ * user: shared by the server actions (Postgres) and the guest form functions
  * (browser storage). Success is `{ ok: true }`; the caller then navigates or
  * refreshes. Otherwise `state` is what the form shows.
  */

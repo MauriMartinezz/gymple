@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/mysql2";
-import { migrate } from "drizzle-orm/mysql2/migrator";
-import mysql from "mysql2/promise";
+import { drizzle } from "drizzle-orm/node-postgres";
+import { migrate } from "drizzle-orm/node-postgres/migrator";
+import { Pool } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import * as schema from "@/infrastructure/db/schema";
 import { DrizzleTrainerRepository } from "@/modules/trainers/infrastructure/drizzle-trainer-repository";
@@ -9,7 +9,7 @@ import { isActiveTrainerOf } from "../application/coaching-use-cases";
 import { describeCoachingRepositoryContract } from "../testing/coaching-repository-contract";
 import { DrizzleCoachingRepository } from "./drizzle-coaching-repository";
 
-// Runs against a real, disposable MySQL database (see `pnpm test:integration`).
+// Runs against a real, disposable Postgres database (see `pnpm test:integration`).
 const url = process.env.TEST_DATABASE_URL;
 if (!url) throw new Error("TEST_DATABASE_URL is not set.");
 // Setup deletes every user: refuse anything that is not a test database.
@@ -17,8 +17,8 @@ if (!new URL(url).pathname.replace(/^\//, "").endsWith("_test")) {
   throw new Error(`Refusing to run integration tests against "${url}": the database name must end in _test.`);
 }
 
-const pool = mysql.createPool({ uri: url, connectionLimit: 4 });
-const db = drizzle({ client: pool, schema, mode: "default" });
+const pool = new Pool({ connectionString: url, max: 4 });
+const db = drizzle({ client: pool, schema });
 
 beforeAll(async () => {
   await migrate(db, { migrationsFolder: "infrastructure/db/migrations" });
@@ -37,7 +37,7 @@ afterAll(async () => {
 });
 
 async function addUser({ name, email }: { name: string; email: string }) {
-  const [{ id }] = await db.insert(schema.users).values({ name, email }).$returningId();
+  const [{ id }] = await db.insert(schema.users).values({ name, email }).returning({ id: schema.users.id });
   return id;
 }
 
@@ -46,7 +46,7 @@ async function setup() {
   return { repo: new DrizzleCoachingRepository(db), addUser };
 }
 
-describeCoachingRepositoryContract("MySQL (Drizzle)", setup);
+describeCoachingRepositoryContract("Postgres (Drizzle)", setup);
 
 describe("DrizzleCoachingRepository", () => {
   it("keeps only one of two concurrent joins of the same pair", async () => {

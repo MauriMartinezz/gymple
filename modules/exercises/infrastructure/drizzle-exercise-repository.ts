@@ -1,6 +1,7 @@
 import { and, asc, eq, isNotNull, isNull, sql } from "drizzle-orm";
 import type { Db } from "@/infrastructure/db/client";
 import { exercises } from "@/infrastructure/db/schema";
+import { uniqueViolationConstraint } from "@/infrastructure/db/unique-violation";
 import type { Exercise, ExerciseInput } from "../domain/exercise";
 import { DuplicateExerciseNameError, type ExerciseRepository } from "../domain/exercise-repository";
 
@@ -35,7 +36,7 @@ export class DrizzleExerciseRepository implements ExerciseRepository {
 
   async create(userId: number, input: ExerciseInput): Promise<Exercise> {
     const [{ id }] = await rethrowDuplicate(input.name, () =>
-      this.db.insert(exercises).values({ userId, ...input }).$returningId(),
+      this.db.insert(exercises).values({ userId, ...input }).returning({ id: exercises.id }),
     );
     const created = await this.findById(userId, id);
     if (!created) throw new Error(`Exercise ${id} vanished right after insert.`);
@@ -70,17 +71,9 @@ async function rethrowDuplicate<T>(name: string, run: () => Promise<T>): Promise
   try {
     return await run();
   } catch (error) {
-    if (isDuplicateEntry(error)) throw new DuplicateExerciseNameError(name);
+    if (uniqueViolationConstraint(error) === "exercises_user_name_uq") {
+      throw new DuplicateExerciseNameError(name);
+    }
     throw error;
   }
-}
-
-/** MySQL ER_DUP_ENTRY, possibly wrapped by Drizzle in DrizzleQueryError.cause. */
-function isDuplicateEntry(error: unknown): boolean {
-  let current: unknown = error;
-  while (current instanceof Error) {
-    if ((current as { code?: string }).code === "ER_DUP_ENTRY") return true;
-    current = current.cause;
-  }
-  return false;
 }

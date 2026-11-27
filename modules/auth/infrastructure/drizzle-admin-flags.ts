@@ -12,7 +12,7 @@ export class DrizzleAdminFlags implements AdminFlags {
   }
 
   async grantByEmail(email: string): Promise<GrantAdminOutcome> {
-    // The users table collation is case-insensitive.
+    // users.email uses the case-insensitive collation.
     const [row] = await this.db.select({ id: users.id, isAdmin: users.isAdmin }).from(users).where(eq(users.email, email));
     if (!row) return "no_account";
     if (row.isAdmin) return "already_admin";

@@ -9,7 +9,7 @@ import type { ExerciseOption } from "./routine-form";
 
 export { parseRoutineId } from "./parse-routine-id";
 
-/** Composition root: the one place that picks the MySQL adapter. */
+/** Composition root: the one place that picks the Postgres adapter. */
 export const routineRepository = new DrizzleRoutineRepository(db);
 
 /** Reads for pages. Each one resolves the signed-in user itself. */

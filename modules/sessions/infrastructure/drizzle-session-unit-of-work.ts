@@ -4,9 +4,10 @@ import type { SessionRepositories, SessionUnitOfWork } from "../application/sess
 import { DrizzleSessionRepository } from "./drizzle-session-repository";
 
 /**
- * Opens one MySQL transaction and builds both repositories on it. Their own
- * `transaction` calls run as savepoints inside it (Drizzle's mysql2 driver
- * nests transactions that way), so everything commits or rolls back together.
+ * Opens one database transaction and builds both repositories on it. Their
+ * own `transaction` calls run as savepoints inside it (Drizzle's node-postgres
+ * driver nests transactions that way), so everything commits or rolls back
+ * together.
  */
 export class DrizzleSessionUnitOfWork implements SessionUnitOfWork {
   constructor(private readonly db: Db) {}

@@ -37,8 +37,7 @@ async function main() {
     await db.transaction(async (tx) => {
       let [user] = await tx.select({ id: users.id }).from(users).where(eq(users.email, email));
       if (!user) {
-        const [result] = await tx.insert(users).values({ email, name, emailVerified: true });
-        user = { id: result.insertId };
+        [user] = await tx.insert(users).values({ email, name, emailVerified: true }).returning({ id: users.id });
       } else {
         await tx.update(users).set({ emailVerified: true }).where(eq(users.id, user.id));
       }

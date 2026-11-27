@@ -16,7 +16,7 @@ import { runGuestCommand } from "./guest-command";
 
 /*
  * Browser-side counterparts of the exercise server actions: same signature,
- * same use cases and form helpers, guest repository instead of MySQL.
+ * same use cases and form helpers, guest repository instead of Postgres.
  * `onSuccess` navigates with the client router.
  */
 

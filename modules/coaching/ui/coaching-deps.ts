@@ -9,7 +9,7 @@ import type { StudentWorkoutDeps } from "../application/student-workouts";
 import { DrizzleCoachingRepository } from "../infrastructure/drizzle-coaching-repository";
 import { DrizzleFeedbackRepository } from "../infrastructure/drizzle-feedback-repository";
 
-/** Composition root: the one place that picks the MySQL adapters for coaching. */
+/** Composition root: the one place that picks the Postgres adapters for coaching. */
 export const coachingDeps: StudentWorkoutDeps & FeedbackDeps = {
   coaching: new DrizzleCoachingRepository(db),
   feedback: new DrizzleFeedbackRepository(db),

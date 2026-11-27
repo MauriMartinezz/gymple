@@ -20,6 +20,30 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Database
+
+Gymple uses PostgreSQL through Drizzle ORM and node-postgres (`pg`). In
+production it runs on [Neon](https://neon.com/) from the Vercel Marketplace;
+in development, on a Postgres 17 container.
+
+```bash
+pnpm db:up        # Postgres on localhost:5433 (POSTGRES_PORT) and Mailpit
+pnpm db:migrate   # apply infrastructure/db/migrations
+pnpm db:seed      # verified user from SEED_USER_EMAIL / SEED_USER_PASSWORD
+pnpm test:integration
+```
+
+| Variable            | Description                                                                 |
+| ------------------- | --------------------------------------------------------------------------- |
+| `DATABASE_URL`      | `postgres://gymple:gymple@localhost:5433/gymple` in development             |
+| `TEST_DATABASE_URL` | Defaults to `postgres://gymple:gymple@localhost:5433/gymple_test`; the name must end in `_test` |
+
+The `gymple_test` database is created with the container volume; on an older
+volume, create it with `pnpm db:test:create`. Exercise and routine names and
+emails compare ignoring case and accents (`Squat` = `SQUÁT`), through the
+`case_insensitive` ICU collation created by the first migration. On Vercel the
+pool is attached with `attachDatabasePool` so idle connections are released.
+
 ## Accounts and email verification
 
 Anyone can create an account at `/signup` (name, email, password). The account
@@ -130,7 +154,7 @@ page). The answer never reveals whether an email has an account.
 Anyone can try Gymple without an account: "Continue as guest" on `/login` and `/signup` opens `/guest`.
 
 - Guest data never reaches the server. Exercises, routines and workouts are saved in this browser's `localStorage` under one versioned key (`gymple.guest`); guest pages use no session, server action or database.
-- The same domain rules and use cases run in the browser, through browser adapters of the repository ports (`modules/guest/infrastructure`) that pass the same contract suites as the MySQL adapters.
+- The same domain rules and use cases run in the browser, through browser adapters of the repository ports (`modules/guest/infrastructure`) that pass the same contract suites as the Postgres adapters.
 - "Delete guest data" (in the guest header) clears everything after a confirmation. Blocked or full storage, and unreadable saved data, show a message instead of failing silently.
 - Guests start workouts (from a routine or free, one at a time), log, edit and delete sets with the same prefill from their own history, finish with the same "Save workout" / "Save and update routine" choice, and keep a history. Finishing with a routine update saves the workout and the routine in one storage write: if the routine rejects the change, nothing is saved.
 - Guest data is not moved into an account on sign-up. Trainers (suggestions, comments), admin and coaching are for accounts only.

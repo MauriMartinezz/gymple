@@ -2,7 +2,7 @@ import type { Routine, RoutineInput } from "../domain/routine";
 import { UnknownExerciseError, type RoutineRepository } from "../domain/routine-repository";
 
 /**
- * Test double for RoutineRepository. Mirrors the MySQL adapter's behavior:
+ * Test double for RoutineRepository. Mirrors the Postgres adapter's behavior:
  * user-scoped access, case-insensitive name ordering, and items that may only
  * reference exercises the user owns. Register those with `addExercise`.
  * Both implementations run the same contract suite.

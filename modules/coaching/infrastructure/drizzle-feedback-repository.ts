@@ -39,11 +39,14 @@ export class DrizzleFeedbackRepository implements FeedbackRepository {
     await this.db
       .insert(loadSuggestions)
       .values({ trainerUserId: s.trainerId, studentUserId: s.studentId, exerciseId: s.exerciseId, ...values })
-      .onDuplicateKeyUpdate({ set: values });
+      .onConflictDoUpdate({
+        target: [loadSuggestions.trainerUserId, loadSuggestions.studentUserId, loadSuggestions.exerciseId],
+        set: values,
+      });
   }
 
   async deleteSuggestion(trainerId: number, studentId: number, exerciseId: number): Promise<boolean> {
-    const [result] = await this.db
+    const result = await this.db
       .delete(loadSuggestions)
       .where(
         and(
@@ -52,7 +55,7 @@ export class DrizzleFeedbackRepository implements FeedbackRepository {
           eq(loadSuggestions.exerciseId, exerciseId),
         ),
       );
-    return result.affectedRows > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   async listSuggestionsForStudent(studentId: number): Promise<LoadSuggestion[]> {
@@ -62,7 +65,7 @@ export class DrizzleFeedbackRepository implements FeedbackRepository {
       .innerJoin(users, eq(users.id, loadSuggestions.trainerUserId))
       .where(eq(loadSuggestions.studentUserId, studentId))
       .orderBy(desc(loadSuggestions.suggestedAt), desc(loadSuggestions.id));
-    // decimal comes back as a string from mysql2.
+    // numeric comes back as a string from node-postgres.
     return rows.map((row) => ({ ...row, weightKg: Number(row.weightKg) }));
   }
 
@@ -70,13 +73,13 @@ export class DrizzleFeedbackRepository implements FeedbackRepository {
     const [{ id }] = await this.db
       .insert(workoutComments)
       .values({ sessionId: comment.sessionId, trainerUserId: comment.trainerId, body: comment.body, createdAt: comment.createdAt })
-      .$returningId();
+      .returning({ id: workoutComments.id });
     const [row] = await this.commentQuery().where(eq(workoutComments.id, id));
     return row;
   }
 
   async deleteComment(trainerId: number, sessionId: number, commentId: number): Promise<boolean> {
-    const [result] = await this.db
+    const result = await this.db
       .delete(workoutComments)
       .where(
         and(
@@ -85,7 +88,7 @@ export class DrizzleFeedbackRepository implements FeedbackRepository {
           eq(workoutComments.sessionId, sessionId),
         ),
       );
-    return result.affectedRows > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   async listComments(sessionId: number): Promise<WorkoutComment[]> {

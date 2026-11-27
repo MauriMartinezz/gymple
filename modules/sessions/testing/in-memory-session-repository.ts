@@ -16,7 +16,7 @@ interface Owned {
 type SessionRow = WorkoutSession & { userId: number };
 
 /**
- * Test double for SessionRepository. Mirrors the MySQL adapter's behavior:
+ * Test double for SessionRepository. Mirrors the Postgres adapter's behavior:
  * user-scoped access, one active session per user, per-exercise set numbers,
  * and ownership checks on exercises and routines. Register those with
  * `addExercise` and `addRoutine`. Both implementations run the same contract.

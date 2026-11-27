@@ -6,7 +6,7 @@ import { DrizzleExerciseRepository } from "../infrastructure/drizzle-exercise-re
 
 export { parseExerciseId } from "./parse-exercise-id";
 
-/** Composition root: the one place that picks the MySQL adapter. */
+/** Composition root: the one place that picks the Postgres adapter. */
 export const exerciseRepository = new DrizzleExerciseRepository(db);
 
 /** Reads for pages. Each one resolves the signed-in user itself. */

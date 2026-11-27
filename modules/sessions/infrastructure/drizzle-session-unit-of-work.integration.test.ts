@@ -1,6 +1,6 @@
-import { drizzle } from "drizzle-orm/mysql2";
-import { migrate } from "drizzle-orm/mysql2/migrator";
-import mysql from "mysql2/promise";
+import { drizzle } from "drizzle-orm/node-postgres";
+import { migrate } from "drizzle-orm/node-postgres/migrator";
+import { Pool } from "pg";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import * as schema from "@/infrastructure/db/schema";
 import type { Routine, RoutineItem } from "@/modules/routines/domain/routine";
@@ -10,7 +10,7 @@ import { EmptySessionError } from "../domain/session-repository";
 import { DrizzleSessionRepository } from "./drizzle-session-repository";
 import { DrizzleSessionUnitOfWork } from "./drizzle-session-unit-of-work";
 
-// Runs against a real, disposable MySQL database (see `pnpm test:integration`).
+// Runs against a real, disposable Postgres database (see `pnpm test:integration`).
 const url = process.env.TEST_DATABASE_URL;
 if (!url) throw new Error("TEST_DATABASE_URL is not set.");
 // Setup deletes every user: refuse anything that is not a test database.
@@ -18,8 +18,8 @@ if (!new URL(url).pathname.replace(/^\//, "").endsWith("_test")) {
   throw new Error(`Refusing to run integration tests against "${url}": the database name must end in _test.`);
 }
 
-const pool = mysql.createPool({ uri: url, connectionLimit: 4 });
-const db = drizzle({ client: pool, schema, mode: "default" });
+const pool = new Pool({ connectionString: url, max: 4 });
+const db = drizzle({ client: pool, schema });
 const sessions = new DrizzleSessionRepository(db);
 const routines = new DrizzleRoutineRepository(db);
 const uow = new DrizzleSessionUnitOfWork(db);
@@ -48,14 +48,14 @@ let dips: number;
 beforeEach(async () => {
   await deleteSessionsAndRoutines();
   await db.delete(schema.users); // cascades to exercises
-  [{ id: alice }] = await db.insert(schema.users).values({ email: "alice@test.dev", name: "Alice" }).$returningId();
+  [{ id: alice }] = await db.insert(schema.users).values({ email: "alice@test.dev", name: "Alice" }).returning({ id: schema.users.id });
   [{ id: bench }, { id: dips }] = await db
     .insert(schema.exercises)
     .values([
       { userId: alice, name: "Bench press", muscleGroup: "chest" as const },
       { userId: alice, name: "Dips", muscleGroup: "chest" as const },
     ])
-    .$returningId();
+    .returning({ id: schema.exercises.id });
 });
 
 const item = (exerciseId: number): RoutineItem => ({

@@ -2,7 +2,7 @@ import type { Exercise, ExerciseInput } from "../domain/exercise";
 import { DuplicateExerciseNameError, type ExerciseRepository } from "../domain/exercise-repository";
 
 /**
- * Test double for ExerciseRepository. Mirrors the MySQL adapter's behavior,
+ * Test double for ExerciseRepository. Mirrors the Postgres adapter's behavior,
  * including case-insensitive name uniqueness (the table's collation is _ci).
  * Both implementations run the same contract suite.
  */

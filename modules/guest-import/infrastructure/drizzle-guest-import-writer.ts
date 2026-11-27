@@ -7,8 +7,8 @@ import type { GuestImportPlan } from "../domain/guest-import-plan";
 type Tx = Parameters<Parameters<Db["transaction"]>[0]>[0];
 
 /**
- * Writes a guest import plan in one MySQL transaction: an error anywhere
- * rolls back everything. Every row gets a new auto-increment id and the
+ * Writes a guest import plan in one database transaction: an error anywhere
+ * rolls back everything. Every row gets a new serial id and the
  * signed-in user's id; references are rewritten through maps built here, so
  * a row can only point at rows of the same user.
  */
@@ -32,7 +32,7 @@ export class DrizzleGuestImportWriter implements GuestImportWriter {
         const [{ id }] = await tx
           .insert(exercises)
           .values({ userId, ...exercise.input, archivedAt: exercise.archivedAt })
-          .$returningId();
+          .returning({ id: exercises.id });
         exerciseIds.set(exercise.key, id);
         counts.exercises += 1;
       }
@@ -43,7 +43,7 @@ export class DrizzleGuestImportWriter implements GuestImportWriter {
         const [{ id }] = await tx
           .insert(routines)
           .values({ userId, ...fields, archivedAt: routine.archivedAt })
-          .$returningId();
+          .returning({ id: routines.id });
         routineIds.set(routine.key, id);
         await tx.insert(routineExercises).values(
           items.map((item, position) => ({ ...item, routineId: id, position, exerciseId: mapped(exerciseIds, item.exerciseId) })),
@@ -71,7 +71,7 @@ export class DrizzleGuestImportWriter implements GuestImportWriter {
             finishedAt: workout.finishedAt,
             notes: workout.notes,
           })
-          .$returningId();
+          .returning({ id: workoutSessions.id });
         // Numbered per stored exercise (1..n in logging order): two guest
         // exercises mapped to one account exercise share one sequence.
         const numbers = new Map<number, number>();
@@ -102,7 +102,8 @@ export class DrizzleGuestImportWriter implements GuestImportWriter {
 }
 
 /**
- * The account's exercise with this name, compared by the column's collation:
+ * The account's exercise with this name, compared by the column's
+ * case- and accent-insensitive collation:
  * exactly what the `exercises_user_name_uq` index treats as the same name
  * (also catching two guest exercises that collide only by letter case).
  */

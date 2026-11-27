@@ -17,7 +17,7 @@ import { runGuestCommand } from "./guest-command";
 
 /*
  * Browser-side counterparts of the routine server actions: same signature,
- * same use cases and form helpers, guest repository instead of MySQL.
+ * same use cases and form helpers, guest repository instead of Postgres.
  */
 
 type FormFunction = (state: RoutineFormState, formData: FormData) => Promise<RoutineFormState>;

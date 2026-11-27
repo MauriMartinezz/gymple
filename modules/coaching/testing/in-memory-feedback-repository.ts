@@ -7,7 +7,7 @@ interface SuggestionRow extends Omit<LoadSuggestion, "trainerName"> {
 type CommentRow = Omit<WorkoutComment, "trainerName">;
 
 /**
- * Test double for FeedbackRepository. Mirrors the MySQL adapter: one
+ * Test double for FeedbackRepository. Mirrors the Postgres adapter: one
  * suggestion per (trainer, student, exercise), the same orderings, names
  * resolved from the accounts. Both implementations run the same contract.
  * Deleting a workout's comments with the workout is the database's foreign

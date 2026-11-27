@@ -53,7 +53,7 @@ export class DrizzleRoutineRepository implements RoutineRepository {
       const [{ id }] = await tx
         .insert(routines)
         .values({ userId, name: input.name, description: input.description })
-        .$returningId();
+        .returning({ id: routines.id });
       await insertItems(tx, id, input.items);
       const created = await findOwned(tx, userId, id);
       if (!created) throw new Error(`Routine ${id} vanished right after insert.`);

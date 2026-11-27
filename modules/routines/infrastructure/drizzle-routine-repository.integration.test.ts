@@ -1,13 +1,13 @@
 import { eq } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/mysql2";
-import { migrate } from "drizzle-orm/mysql2/migrator";
-import mysql from "mysql2/promise";
+import { drizzle } from "drizzle-orm/node-postgres";
+import { migrate } from "drizzle-orm/node-postgres/migrator";
+import { Pool } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import * as schema from "@/infrastructure/db/schema";
 import { describeRoutineRepositoryContract, type ContractFixture } from "../testing/routine-repository-contract";
 import { DrizzleRoutineRepository } from "./drizzle-routine-repository";
 
-// Runs against a real, disposable MySQL database (see `pnpm test:integration`).
+// Runs against a real, disposable Postgres database (see `pnpm test:integration`).
 const url = process.env.TEST_DATABASE_URL;
 if (!url) throw new Error("TEST_DATABASE_URL is not set.");
 // Setup deletes every user: refuse anything that is not a test database.
@@ -15,8 +15,8 @@ if (!new URL(url).pathname.replace(/^\//, "").endsWith("_test")) {
   throw new Error(`Refusing to run integration tests against "${url}": the database name must end in _test.`);
 }
 
-const pool = mysql.createPool({ uri: url, connectionLimit: 4 });
-const db = drizzle({ client: pool, schema, mode: "default" });
+const pool = new Pool({ connectionString: url, max: 4 });
+const db = drizzle({ client: pool, schema });
 
 beforeAll(async () => {
   await migrate(db, { migrationsFolder: "infrastructure/db/migrations" });
@@ -31,7 +31,7 @@ afterAll(async () => {
   await pool.end();
 });
 
-describeRoutineRepositoryContract("MySQL (Drizzle)", seed);
+describeRoutineRepositoryContract("Postgres (Drizzle)", seed);
 
 describe("DrizzleRoutineRepository atomicity", () => {
   it("keeps the previous name and items when an update fails after deleting them", async () => {
@@ -63,13 +63,13 @@ describe("DrizzleRoutineRepository atomicity", () => {
 async function seed(): Promise<ContractFixture> {
   await deleteRoutines();
   await db.delete(schema.users); // cascades to exercises
-  const [alice] = await db.insert(schema.users).values({ email: "alice@test.dev", name: "Alice" }).$returningId();
-  const [bob] = await db.insert(schema.users).values({ email: "bob@test.dev", name: "Bob" }).$returningId();
+  const [alice] = await db.insert(schema.users).values({ email: "alice@test.dev", name: "Alice" }).returning({ id: schema.users.id });
+  const [bob] = await db.insert(schema.users).values({ email: "bob@test.dev", name: "Bob" }).returning({ id: schema.users.id });
   const exercise = (userId: number, name: string) => ({ userId, name, muscleGroup: "chest" as const });
   const [first, second, bobExercise] = await db
     .insert(schema.exercises)
     .values([exercise(alice.id, "Bench press"), exercise(alice.id, "Dips"), exercise(bob.id, "Bench press")])
-    .$returningId();
+    .returning({ id: schema.exercises.id });
   // Archived exercises still belong to their owner.
   await db.update(schema.exercises).set({ archivedAt: new Date() }).where(eq(schema.exercises.id, second.id));
   return {
