@@ -5,7 +5,7 @@ import type { LoggedSet, WorkoutSession } from "@/modules/sessions/domain/sessio
 /*
  * Guest data lives only in the browser (S5): one versioned snapshot under one
  * key. Rows keep a userId so the browser adapters stay user-scoped like the
- * MySQL ones; guest pages always use GUEST_USER_ID.
+ * Postgres ones; guest pages always use GUEST_USER_ID.
  */
 
 export const GUEST_STORAGE_KEY = "gymple.guest";

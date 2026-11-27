@@ -15,7 +15,7 @@ const FORBIDDEN_PACKAGES = [
   "next/headers",
   "next/cache",
   "drizzle-orm",
-  "mysql2",
+  "pg",
   "better-auth",
   "nodemailer",
 ];

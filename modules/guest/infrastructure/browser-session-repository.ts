@@ -11,7 +11,7 @@ import { readSnapshotOrThrow, type GuestSnapshot, type GuestStorage, type Stored
 
 /**
  * SessionRepository for guests, persisted in the guest snapshot next to the
- * exercises and routines it checks. Mirrors the MySQL adapter (user-scoped
+ * exercises and routines it checks. Mirrors the Postgres adapter (user-scoped
  * access, one active session per user, per-exercise set numbers, ownership
  * checks) and runs the same contract suite. Each call is one read-change-write
  * of the snapshot, and a failed check writes nothing.

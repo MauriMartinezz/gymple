@@ -17,7 +17,7 @@ import type { PrefillSuggestion } from "./session-view";
 
 export { parseSessionId } from "./parse-session-form";
 
-/** Composition root: the one place that picks the MySQL adapters. */
+/** Composition root: the one place that picks the Postgres adapters. */
 export const sessionRepository = new DrizzleSessionRepository(db);
 export const sessionUnitOfWork = new DrizzleSessionUnitOfWork(db);
 

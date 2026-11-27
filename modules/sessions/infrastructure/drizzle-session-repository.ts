@@ -36,7 +36,7 @@ const setColumns = {
 };
 
 type SessionRow = Omit<WorkoutSession, "sets">;
-/** A set as mysql2 returns it: DECIMAL columns come back as strings. */
+/** A set as node-postgres returns it: numeric columns come back as strings. */
 type SetRow = Omit<LoggedSet, "weightKg" | "rpe"> & { sessionId: number; weightKg: string; rpe: string | null };
 
 export class DrizzleSessionRepository implements SessionRepository {
@@ -84,7 +84,10 @@ export class DrizzleSessionRepository implements SessionRepository {
           .where(and(eq(routines.id, routineId), eq(routines.userId, userId), isNull(routines.archivedAt)));
         if (!routine) throw new UnknownRoutineError(routineId);
       }
-      const [{ id }] = await tx.insert(workoutSessions).values({ userId, routineId }).$returningId();
+      const [{ id }] = await tx
+        .insert(workoutSessions)
+        .values({ userId, routineId })
+        .returning({ id: workoutSessions.id });
       const created = await findOwned(tx, userId, id);
       if (!created) throw new Error(`Session ${id} vanished right after insert.`);
       return created;
@@ -104,7 +107,7 @@ export class DrizzleSessionRepository implements SessionRepository {
       const [{ id }] = await tx
         .insert(sessionSets)
         .values({ sessionId, exerciseId, setNumber: (last ?? 0) + 1, ...toColumns(input) })
-        .$returningId();
+        .returning({ id: sessionSets.id });
       return findSet(tx, sessionId, id);
     });
   }
@@ -167,17 +170,17 @@ export class DrizzleSessionRepository implements SessionRepository {
   }
 
   async discard(userId: number, sessionId: number): Promise<boolean> {
-    const [result] = await this.db
+    const result = await this.db
       .delete(workoutSessions) // cascades to its sets
       .where(and(ownedBy(userId, sessionId), isNull(workoutSessions.finishedAt)));
-    return result.affectedRows > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   async deleteFinished(userId: number, sessionId: number): Promise<boolean> {
-    const [result] = await this.db
+    const result = await this.db
       .delete(workoutSessions) // cascades to its sets
       .where(and(ownedBy(userId, sessionId), isNotNull(workoutSessions.finishedAt)));
-    return result.affectedRows > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   async lastPerformances(userId: number, exerciseIds: readonly number[]): Promise<Map<number, LoggedSet>> {
@@ -277,7 +280,7 @@ async function assertCanLog(tx: Tx, userId: number, sessionId: number, exerciseI
   if (!logged) throw new ExerciseNotAllowedError(exerciseId);
 }
 
-// mysql2 reads DECIMAL columns as strings; write them as fixed-point strings too.
+// node-postgres reads numeric columns as strings; write them as fixed-point strings too.
 function toColumns(input: SetInput) {
   return {
     weightKg: input.weightKg.toFixed(2),

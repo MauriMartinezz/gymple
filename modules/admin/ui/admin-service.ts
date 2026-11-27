@@ -8,7 +8,7 @@ import { DrizzleTrainerRepository } from "@/modules/trainers/infrastructure/driz
 
 export { parseUserId } from "./parse-user-id";
 
-/** Composition root: the one place that picks the MySQL and better-auth adapters. */
+/** Composition root: the one place that picks the Postgres and better-auth adapters. */
 export const trainerAdmin: TrainerAdminDeps = {
   trainers: new DrizzleTrainerRepository(db),
   emails: new AuthAccountEmails(auth),

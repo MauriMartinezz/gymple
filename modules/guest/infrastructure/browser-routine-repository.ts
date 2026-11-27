@@ -4,7 +4,7 @@ import { readSnapshotOrThrow, type GuestSnapshot, type GuestStorage, type Stored
 
 /**
  * RoutineRepository for guests, persisted in the guest snapshot next to the
- * exercises it references. Mirrors the MySQL adapter (user-scoped access,
+ * exercises it references. Mirrors the Postgres adapter (user-scoped access,
  * items only reference the user's own exercises, archived included) and runs
  * the same contract suite.
  *

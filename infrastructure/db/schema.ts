@@ -2,18 +2,19 @@ import { relations } from "drizzle-orm";
 import {
   bigint,
   boolean,
-  decimal,
+  customType,
   index,
-  int,
-  mysqlEnum,
-  mysqlTable,
+  integer,
+  numeric,
+  pgEnum,
+  pgTable,
+  serial,
   smallint,
   text,
   timestamp,
   uniqueIndex,
-  varbinary,
   varchar,
-} from "drizzle-orm/mysql-core";
+} from "drizzle-orm/pg-core";
 import { MUSCLE_GROUPS } from "../../modules/exercises/domain/exercise";
 
 /*
@@ -28,19 +29,36 @@ import { MUSCLE_GROUPS } from "../../modules/exercises/domain/exercise";
  * never deleted (FK uses `restrict`).
  */
 
-const createdAt = timestamp("created_at", { mode: "date" }).notNull().defaultNow();
-const updatedAt = timestamp("updated_at", { mode: "date" }).notNull().defaultNow().onUpdateNow();
+const createdAt = timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow();
+const updatedAt = timestamp("updated_at", { mode: "date", withTimezone: true })
+  .notNull()
+  .defaultNow()
+  .$onUpdate(() => new Date());
+
+/**
+ * Text that compares, sorts and enforces uniqueness ignoring case and accents
+ * ("Squat" = "squat" = "SQUÁT"), like the in-memory fakes do. The collation is
+ * created by the first migration (ICU, `und-u-ks-level1`, nondeterministic).
+ * Nondeterministic collations do not support LIKE before Postgres 18.
+ */
+const caseInsensitiveVarchar = customType<{ data: string; config: { length: number } }>({
+  dataType(config) {
+    return `varchar(${config?.length ?? 255}) COLLATE "case_insensitive"`;
+  },
+});
+
+export const muscleGroupEnum = pgEnum("muscle_group", MUSCLE_GROUPS);
 
 /*
  * Auth tables. Shape and property names follow Better Auth's core schema
  * (configured with numeric serial ids); do not rename properties.
  */
 
-export const users = mysqlTable(
+export const users = pgTable(
   "users",
   {
-    id: int().primaryKey().autoincrement(),
-    email: varchar({ length: 255 }).notNull(),
+    id: serial().primaryKey(),
+    email: caseInsensitiveVarchar({ length: 255 }).notNull(),
     name: varchar({ length: 120 }).notNull(),
     emailVerified: boolean("email_verified").notNull().default(false),
     image: text(),
@@ -53,15 +71,15 @@ export const users = mysqlTable(
   (table) => [uniqueIndex("users_email_uq").on(table.email)],
 );
 
-export const sessions = mysqlTable(
+export const sessions = pgTable(
   "sessions",
   {
-    id: int().primaryKey().autoincrement(),
-    userId: int("user_id")
+    id: serial().primaryKey(),
+    userId: integer("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     token: varchar({ length: 255 }).notNull(),
-    expiresAt: timestamp("expires_at", { mode: "date" }).notNull(),
+    expiresAt: timestamp("expires_at", { mode: "date", withTimezone: true }).notNull(),
     ipAddress: text("ip_address"),
     userAgent: text("user_agent"),
     createdAt,
@@ -74,11 +92,11 @@ export const sessions = mysqlTable(
 );
 
 /** Login methods per user. Email/password lives here with providerId "credential". */
-export const accounts = mysqlTable(
+export const accounts = pgTable(
   "accounts",
   {
-    id: int().primaryKey().autoincrement(),
-    userId: int("user_id")
+    id: serial().primaryKey(),
+    userId: integer("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     accountId: varchar("account_id", { length: 255 }).notNull(),
@@ -87,8 +105,8 @@ export const accounts = mysqlTable(
     accessToken: text("access_token"),
     refreshToken: text("refresh_token"),
     idToken: text("id_token"),
-    accessTokenExpiresAt: timestamp("access_token_expires_at", { mode: "date" }),
-    refreshTokenExpiresAt: timestamp("refresh_token_expires_at", { mode: "date" }),
+    accessTokenExpiresAt: timestamp("access_token_expires_at", { mode: "date", withTimezone: true }),
+    refreshTokenExpiresAt: timestamp("refresh_token_expires_at", { mode: "date", withTimezone: true }),
     scope: text(),
     createdAt,
     updatedAt,
@@ -96,13 +114,13 @@ export const accounts = mysqlTable(
   (table) => [index("accounts_user_idx").on(table.userId)],
 );
 
-export const verifications = mysqlTable(
+export const verifications = pgTable(
   "verifications",
   {
-    id: int().primaryKey().autoincrement(),
+    id: serial().primaryKey(),
     identifier: varchar({ length: 255 }).notNull(),
     value: text().notNull(),
-    expiresAt: timestamp("expires_at", { mode: "date" }).notNull(),
+    expiresAt: timestamp("expires_at", { mode: "date", withTimezone: true }).notNull(),
     createdAt,
     updatedAt,
   },
@@ -110,12 +128,12 @@ export const verifications = mysqlTable(
 );
 
 /** Better Auth rate-limit counters, one row per IP + path. */
-export const rateLimits = mysqlTable(
+export const rateLimits = pgTable(
   "rate_limits",
   {
-    id: int().primaryKey().autoincrement(),
+    id: serial().primaryKey(),
     key: varchar({ length: 255 }).notNull(),
-    count: int().notNull(),
+    count: integer().notNull(),
     // Epoch milliseconds, as Better Auth stores it.
     lastRequest: bigint("last_request", { mode: "number" }).notNull(),
   },
@@ -128,16 +146,16 @@ export const rateLimits = mysqlTable(
  * restore it, and so links to students can stay suspended instead of deleted.
  * The id gives a stable "most recently certified first" order.
  */
-export const trainers = mysqlTable(
+export const trainers = pgTable(
   "trainers",
   {
-    id: int().primaryKey().autoincrement(),
-    userId: int("user_id")
+    id: serial().primaryKey(),
+    userId: integer("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     // 7 or 8 digits, normalized by the domain. Unique among trainers, revoked ones included.
     dni: varchar({ length: 8 }).notNull(),
-    revokedAt: timestamp("revoked_at", { mode: "date" }),
+    revokedAt: timestamp("revoked_at", { mode: "date", withTimezone: true }),
     createdAt,
     updatedAt,
   },
@@ -153,14 +171,14 @@ export const trainers = mysqlTable(
  * revoked their links stay here, suspended, and the app checks the trainer
  * status on every access (S7). Leaving or removing deletes the row.
  */
-export const coachingLinks = mysqlTable(
+export const coachingLinks = pgTable(
   "coaching_links",
   {
-    id: int().primaryKey().autoincrement(),
-    trainerUserId: int("trainer_user_id")
+    id: serial().primaryKey(),
+    trainerUserId: integer("trainer_user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    studentUserId: int("student_user_id")
+    studentUserId: integer("student_user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     createdAt,
@@ -173,16 +191,17 @@ export const coachingLinks = mysqlTable(
 
 /**
  * A trainer's profile link code (`/join/<code>`). One per trainer; replacing
- * it invalidates the old link. Binary, so codes compare byte for byte.
+ * it invalidates the old link. Default (deterministic) collation, so codes
+ * compare byte for byte.
  */
-export const trainerInviteCodes = mysqlTable(
+export const trainerInviteCodes = pgTable(
   "trainer_invite_codes",
   {
-    id: int().primaryKey().autoincrement(),
-    trainerUserId: int("trainer_user_id")
+    id: serial().primaryKey(),
+    trainerUserId: integer("trainer_user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    code: varbinary({ length: 32 }).notNull(),
+    code: varchar({ length: 32 }).notNull(),
     createdAt,
     updatedAt,
   },
@@ -192,33 +211,33 @@ export const trainerInviteCodes = mysqlTable(
   ],
 );
 
-export const exercises = mysqlTable(
+export const exercises = pgTable(
   "exercises",
   {
-    id: int().primaryKey().autoincrement(),
-    userId: int("user_id")
+    id: serial().primaryKey(),
+    userId: integer("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    name: varchar({ length: 120 }).notNull(),
-    muscleGroup: mysqlEnum("muscle_group", MUSCLE_GROUPS).notNull(),
+    name: caseInsensitiveVarchar({ length: 120 }).notNull(),
+    muscleGroup: muscleGroupEnum("muscle_group").notNull(),
     notes: text(),
-    archivedAt: timestamp("archived_at", { mode: "date" }),
+    archivedAt: timestamp("archived_at", { mode: "date", withTimezone: true }),
     createdAt,
     updatedAt,
   },
   (table) => [uniqueIndex("exercises_user_name_uq").on(table.userId, table.name)],
 );
 
-export const routines = mysqlTable(
+export const routines = pgTable(
   "routines",
   {
-    id: int().primaryKey().autoincrement(),
-    userId: int("user_id")
+    id: serial().primaryKey(),
+    userId: integer("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    name: varchar({ length: 120 }).notNull(),
+    name: caseInsensitiveVarchar({ length: 120 }).notNull(),
     description: text(),
-    archivedAt: timestamp("archived_at", { mode: "date" }),
+    archivedAt: timestamp("archived_at", { mode: "date", withTimezone: true }),
     createdAt,
     updatedAt,
   },
@@ -226,14 +245,14 @@ export const routines = mysqlTable(
 );
 
 /** One exercise slot inside a routine, with its targets. */
-export const routineExercises = mysqlTable(
+export const routineExercises = pgTable(
   "routine_exercises",
   {
-    id: int().primaryKey().autoincrement(),
-    routineId: int("routine_id")
+    id: serial().primaryKey(),
+    routineId: integer("routine_id")
       .notNull()
       .references(() => routines.id, { onDelete: "cascade" }),
-    exerciseId: int("exercise_id")
+    exerciseId: integer("exercise_id")
       .notNull()
       .references(() => exercises.id, { onDelete: "restrict" }),
     position: smallint().notNull(),
@@ -247,40 +266,40 @@ export const routineExercises = mysqlTable(
 );
 
 /** One execution of a workout. `routineId` is null for free sessions. */
-export const workoutSessions = mysqlTable(
+export const workoutSessions = pgTable(
   "workout_sessions",
   {
-    id: int().primaryKey().autoincrement(),
-    userId: int("user_id")
+    id: serial().primaryKey(),
+    userId: integer("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    routineId: int("routine_id").references(() => routines.id, { onDelete: "set null" }),
-    startedAt: timestamp("started_at", { mode: "date" }).notNull().defaultNow(),
-    finishedAt: timestamp("finished_at", { mode: "date" }),
+    routineId: integer("routine_id").references(() => routines.id, { onDelete: "set null" }),
+    startedAt: timestamp("started_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
+    finishedAt: timestamp("finished_at", { mode: "date", withTimezone: true }),
     notes: text(),
   },
   (table) => [index("workout_sessions_user_started_idx").on(table.userId, table.startedAt)],
 );
 
 /** A performed set: the source of every progression chart and 1RM estimate. */
-export const sessionSets = mysqlTable(
+export const sessionSets = pgTable(
   "session_sets",
   {
-    id: int().primaryKey().autoincrement(),
-    sessionId: int("session_id")
+    id: serial().primaryKey(),
+    sessionId: integer("session_id")
       .notNull()
       .references(() => workoutSessions.id, { onDelete: "cascade" }),
-    exerciseId: int("exercise_id")
+    exerciseId: integer("exercise_id")
       .notNull()
       .references(() => exercises.id, { onDelete: "restrict" }),
     setNumber: smallint("set_number").notNull(),
-    // decimal is returned as a string by mysql2; the repository adapter maps it to number.
-    weightKg: decimal("weight_kg", { precision: 6, scale: 2 }).notNull(),
+    // numeric is returned as a string by node-postgres; the repository adapter maps it to number.
+    weightKg: numeric("weight_kg", { precision: 6, scale: 2 }).notNull(),
     reps: smallint().notNull(),
     // Rate of perceived exertion, 1–10 in 0.5 steps.
-    rpe: decimal({ precision: 3, scale: 1 }),
+    rpe: numeric({ precision: 3, scale: 1 }),
     restSeconds: smallint("rest_seconds"),
-    completedAt: timestamp("completed_at", { mode: "date" }).notNull().defaultNow(),
+    completedAt: timestamp("completed_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
     index("session_sets_session_idx").on(table.sessionId, table.setNumber),
@@ -294,25 +313,25 @@ export const sessionSets = mysqlTable(
  * saving again replaces it. It never touches routines. Whether it applies is
  * decided by the app (active trainer, still linked, S7).
  */
-export const loadSuggestions = mysqlTable(
+export const loadSuggestions = pgTable(
   "load_suggestions",
   {
-    id: int().primaryKey().autoincrement(),
-    trainerUserId: int("trainer_user_id")
+    id: serial().primaryKey(),
+    trainerUserId: integer("trainer_user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    studentUserId: int("student_user_id")
+    studentUserId: integer("student_user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    exerciseId: int("exercise_id")
+    exerciseId: integer("exercise_id")
       .notNull()
       .references(() => exercises.id, { onDelete: "cascade" }),
-    weightKg: decimal("weight_kg", { precision: 6, scale: 2 }).notNull(),
+    weightKg: numeric("weight_kg", { precision: 6, scale: 2 }).notNull(),
     reps: smallint().notNull(),
     sets: smallint(),
     note: text(),
     // Set by the app on every save; the most recent suggestion wins.
-    suggestedAt: timestamp("suggested_at", { mode: "date", fsp: 3 }).notNull(),
+    suggestedAt: timestamp("suggested_at", { mode: "date", withTimezone: true, precision: 3 }).notNull(),
   },
   (table) => [
     uniqueIndex("load_suggestions_trainer_student_exercise_uq").on(
@@ -325,18 +344,18 @@ export const loadSuggestions = mysqlTable(
 );
 
 /** A trainer's comment on a student's finished workout; deleted with the workout. */
-export const workoutComments = mysqlTable(
+export const workoutComments = pgTable(
   "workout_comments",
   {
-    id: int().primaryKey().autoincrement(),
-    sessionId: int("session_id")
+    id: serial().primaryKey(),
+    sessionId: integer("session_id")
       .notNull()
       .references(() => workoutSessions.id, { onDelete: "cascade" }),
-    trainerUserId: int("trainer_user_id")
+    trainerUserId: integer("trainer_user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     body: text().notNull(),
-    createdAt: timestamp("created_at", { mode: "date", fsp: 3 }).notNull(),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true, precision: 3 }).notNull(),
   },
   (table) => [index("workout_comments_session_idx").on(table.sessionId, table.createdAt)],
 );

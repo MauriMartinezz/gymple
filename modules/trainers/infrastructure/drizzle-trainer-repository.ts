@@ -1,6 +1,7 @@
 import { desc, eq, sql } from "drizzle-orm";
 import type { Db } from "@/infrastructure/db/client";
 import { trainers, users } from "@/infrastructure/db/schema";
+import { uniqueViolationConstraint } from "@/infrastructure/db/unique-violation";
 import { sameEmail, type Trainer, type TrainerAccount, type TrainerInput } from "../domain/trainer";
 import {
   AlreadyTrainerError,
@@ -50,7 +51,7 @@ export class DrizzleTrainerRepository implements TrainerRepository {
         const [{ id }] = await tx
           .insert(users)
           .values({ name: input.name, email: input.email, emailVerified: true })
-          .$returningId();
+          .returning({ id: users.id });
         await tx.insert(trainers).values({ userId: id, dni: input.dni });
         return id;
       }),
@@ -66,12 +67,12 @@ export class DrizzleTrainerRepository implements TrainerRepository {
   }
 
   async setRevoked(userId: number, revoked: boolean): Promise<boolean> {
-    const [result] = await this.db
+    const result = await this.db
       .update(trainers)
       // Revoking twice keeps the original date.
       .set({ revokedAt: revoked ? sql`COALESCE(${trainers.revokedAt}, NOW())` : null })
       .where(eq(trainers.userId, userId));
-    return result.affectedRows > 0;
+    return (result.rowCount ?? 0) > 0;
   }
 
   async update(userId: number, input: TrainerInput): Promise<Trainer | null> {
@@ -114,7 +115,7 @@ function toTrainer(row: TrainerRow): Trainer {
   return { ...row, status: row.revokedAt ? "revoked" : "active" };
 }
 
-/** Maps MySQL unique-key violations to domain errors, by index name. */
+/** Maps unique-key violations to domain errors, by index name. */
 async function rethrowDuplicates<T>(
   context: { email?: string; dni: string; userId?: number },
   run: () => Promise<T>,
@@ -122,21 +123,10 @@ async function rethrowDuplicates<T>(
   try {
     return await run();
   } catch (error) {
-    const key = duplicateKey(error);
-    if (key?.includes("trainers_dni_uq")) throw new DniTakenError(context.dni);
-    if (key?.includes("users_email_uq") && context.email) throw new EmailTakenError(context.email);
-    if (key?.includes("trainers_user_uq") && context.userId) throw new AlreadyTrainerError(context.userId);
+    const key = uniqueViolationConstraint(error);
+    if (key === "trainers_dni_uq") throw new DniTakenError(context.dni);
+    if (key === "users_email_uq" && context.email) throw new EmailTakenError(context.email);
+    if (key === "trainers_user_uq" && context.userId) throw new AlreadyTrainerError(context.userId);
     throw error;
   }
-}
-
-/** The ER_DUP_ENTRY message (names the index), possibly wrapped by Drizzle in DrizzleQueryError.cause. */
-function duplicateKey(error: unknown): string | null {
-  let current: unknown = error;
-  while (current instanceof Error) {
-    const { code, sqlMessage } = current as { code?: string; sqlMessage?: string };
-    if (code === "ER_DUP_ENTRY") return sqlMessage ?? current.message;
-    current = current.cause;
-  }
-  return null;
 }

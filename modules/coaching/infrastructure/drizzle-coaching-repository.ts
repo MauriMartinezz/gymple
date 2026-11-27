@@ -20,11 +20,11 @@ export class DrizzleCoachingRepository implements CoachingRepository {
     await this.db
       .insert(trainerInviteCodes)
       .values({ trainerUserId: trainerId, code })
-      .onDuplicateKeyUpdate({ set: { code } });
+      .onConflictDoUpdate({ target: trainerInviteCodes.trainerUserId, set: { code } });
   }
 
   async findTrainerByInviteCode(code: string): Promise<Person | null> {
-    // varbinary: compared byte for byte, so case and trailing spaces matter.
+    // Default (deterministic) collation: compared byte for byte, so case and trailing spaces matter.
     const [row] = await this.db
       .select(personColumns)
       .from(trainerInviteCodes)
@@ -34,19 +34,18 @@ export class DrizzleCoachingRepository implements CoachingRepository {
   }
 
   async link(trainerId: number, studentId: number): Promise<boolean> {
-    try {
-      await this.db.insert(coachingLinks).values({ trainerUserId: trainerId, studentUserId: studentId });
-      return true;
-    } catch (error) {
-      // Joining twice (or two requests at once) is a no-op.
-      if (isDuplicate(error, "coaching_links_pair_uq")) return false;
-      throw error;
-    }
+    // Joining twice (or two requests at once) is a no-op.
+    const inserted = await this.db
+      .insert(coachingLinks)
+      .values({ trainerUserId: trainerId, studentUserId: studentId })
+      .onConflictDoNothing({ target: [coachingLinks.trainerUserId, coachingLinks.studentUserId] })
+      .returning({ id: coachingLinks.id });
+    return inserted.length > 0;
   }
 
   async unlink(trainerId: number, studentId: number): Promise<boolean> {
-    const [result] = await this.db.delete(coachingLinks).where(pair(trainerId, studentId));
-    return result.affectedRows > 0;
+    const result = await this.db.delete(coachingLinks).where(pair(trainerId, studentId));
+    return (result.rowCount ?? 0) > 0;
   }
 
   async findStudent(trainerId: number, studentId: number): Promise<Person | null> {
@@ -79,15 +78,4 @@ export class DrizzleCoachingRepository implements CoachingRepository {
 
 function pair(trainerId: number, studentId: number) {
   return and(eq(coachingLinks.trainerUserId, trainerId), eq(coachingLinks.studentUserId, studentId));
-}
-
-/** An ER_DUP_ENTRY on the given index, possibly wrapped by Drizzle in DrizzleQueryError.cause. */
-function isDuplicate(error: unknown, index: string): boolean {
-  let current: unknown = error;
-  while (current instanceof Error) {
-    const { code, sqlMessage } = current as { code?: string; sqlMessage?: string };
-    if (code === "ER_DUP_ENTRY") return (sqlMessage ?? current.message).includes(index);
-    current = current.cause;
-  }
-  return false;
 }

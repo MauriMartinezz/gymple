@@ -7,7 +7,7 @@ import {
 } from "../domain/trainer-repository";
 
 interface TrainerRow {
-  /** Insertion order: the MySQL adapter sorts by the auto-increment id. */
+  /** Insertion order: the Postgres adapter sorts by the auto-increment id. */
   seq: number;
   dni: string;
   certifiedAt: Date;
@@ -16,7 +16,7 @@ interface TrainerRow {
 
 /**
  * Test double for TrainerRepository, holding accounts and trainer rows.
- * Mirrors the MySQL adapter, including case-insensitive email uniqueness.
+ * Mirrors the Postgres adapter, including case-insensitive email uniqueness.
  * Both implementations run the same contract suite.
  */
 export class InMemoryTrainerRepository implements TrainerRepository {

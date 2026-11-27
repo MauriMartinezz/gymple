@@ -50,6 +50,14 @@ export function describeExerciseRepositoryContract(
       );
     });
 
+    it("rejects a duplicate name for the same user, ignoring accents", async () => {
+      await repo.create(alice, { ...squat, name: "Sentadilla búlgara" });
+
+      await expect(repo.create(alice, { ...squat, name: "SENTADILLA BULGARA" })).rejects.toBeInstanceOf(
+        DuplicateExerciseNameError,
+      );
+    });
+
     it("rejects renaming onto an existing name", async () => {
       await repo.create(alice, squat);
       const other = await repo.create(alice, bench);

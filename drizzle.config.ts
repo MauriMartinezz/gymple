@@ -12,7 +12,7 @@ if (!process.env.DATABASE_URL) {
 }
 
 export default defineConfig({
-  dialect: "mysql",
+  dialect: "postgresql",
   schema: "./infrastructure/db/schema.ts",
   out: "./infrastructure/db/migrations",
   dbCredentials: { url: process.env.DATABASE_URL },

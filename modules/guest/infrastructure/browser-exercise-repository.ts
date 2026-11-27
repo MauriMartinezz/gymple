@@ -4,7 +4,7 @@ import { readSnapshotOrThrow, type GuestStorage, type StoredExercise } from "../
 
 /**
  * ExerciseRepository for guests, persisted in the guest snapshot. Mirrors the
- * MySQL adapter (case-insensitive unique names, user-scoped access) and runs
+ * Postgres adapter (case-insensitive unique names, user-scoped access) and runs
  * the same contract suite. Each call reads, changes and writes the snapshot
  * synchronously, so calls never interleave inside one tab.
  *

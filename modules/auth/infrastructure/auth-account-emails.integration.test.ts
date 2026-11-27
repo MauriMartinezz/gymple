@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/mysql2";
-import { migrate } from "drizzle-orm/mysql2/migrator";
-import mysql from "mysql2/promise";
+import { drizzle } from "drizzle-orm/node-postgres";
+import { migrate } from "drizzle-orm/node-postgres/migrator";
+import { Pool } from "pg";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import * as schema from "@/infrastructure/db/schema";
 import { InMemoryEmailSender } from "@/infrastructure/email/testing/in-memory-email-sender";
@@ -10,7 +10,7 @@ import { createTrainer, updateTrainer } from "@/modules/trainers/application/tra
 import { AuthAccountEmails } from "./auth-account-emails";
 import { createAuth } from "./create-auth";
 
-// Runs against a real, disposable MySQL database (see `pnpm test:integration`).
+// Runs against a real, disposable Postgres database (see `pnpm test:integration`).
 const url = process.env.TEST_DATABASE_URL;
 if (!url) throw new Error("TEST_DATABASE_URL is not set.");
 // Setup deletes every user: refuse anything that is not a test database.
@@ -18,8 +18,8 @@ if (!new URL(url).pathname.replace(/^\//, "").endsWith("_test")) {
   throw new Error(`Refusing to run integration tests against "${url}": the database name must end in _test.`);
 }
 
-const pool = mysql.createPool({ uri: url, connectionLimit: 4 });
-const db = drizzle({ client: pool, schema, mode: "default" });
+const pool = new Pool({ connectionString: url, max: 4 });
+const db = drizzle({ client: pool, schema });
 const baseURL = "http://localhost:3000";
 const emails = new InMemoryEmailSender();
 const auth = createAuth({

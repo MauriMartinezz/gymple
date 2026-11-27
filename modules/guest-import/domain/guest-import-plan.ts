@@ -15,8 +15,9 @@ import { validateSessionNotes, validateSetInput, type SetInput } from "@/modules
 export const IMPORTABLE_SNAPSHOT_VERSION = 1;
 
 /**
- * Dates must fit a MySQL TIMESTAMP (1970-01-01 00:00:01 to 2038-01-19
- * 03:14:07 UTC); a day of margin on each side keeps every time zone safe.
+ * Sanity bounds for imported dates, first chosen to fit a MySQL TIMESTAMP
+ * (1970-01-01 00:00:01 to 2038-01-19 03:14:07 UTC) and kept on Postgres; a
+ * day of margin on each side keeps every time zone safe.
  */
 const DATE_RANGE = { min: Date.UTC(1970, 0, 2), max: Date.UTC(2038, 0, 18) };
 

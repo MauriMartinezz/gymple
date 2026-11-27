@@ -19,7 +19,7 @@ import {
 
 /*
  * Reads for the workout pages, for one already resolved user and whatever
- * adapters the caller picked: the signed-in pages (MySQL, `session-service`)
+ * adapters the caller picked: the signed-in pages (Postgres, `session-service`)
  * and guest mode (browser storage) share them.
  */
 

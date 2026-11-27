@@ -33,7 +33,7 @@ export function createAuth({ db, emailSender, baseURL, secret, rateLimit = true 
     baseURL,
     secret,
     database: drizzleAdapter(db, {
-      provider: "mysql",
+      provider: "pg",
       schema: {
         user: users,
         session: sessions,

@@ -7,7 +7,7 @@ interface LinkRow {
 }
 
 /**
- * Test double for CoachingRepository. Mirrors the MySQL adapter: one link per
+ * Test double for CoachingRepository. Mirrors the Postgres adapter: one link per
  * pair, newest first, one code per trainer, exact code matching.
  * Both implementations run the same contract suite.
  */

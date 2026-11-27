@@ -32,7 +32,7 @@ import { runGuestCommand } from "./guest-command";
 
 /*
  * Browser-side counterparts of the workout server actions: same signature,
- * same use cases and form commands, guest adapters instead of MySQL. There is
+ * same use cases and form commands, guest adapters instead of Postgres. There is
  * no refresh step: every write notifies the guest storage, and the screens
  * reload from it. Guests get no trainer suggestions or comments.
  */

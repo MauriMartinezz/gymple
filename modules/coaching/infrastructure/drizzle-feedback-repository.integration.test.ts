@@ -1,14 +1,14 @@
 import { eq } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/mysql2";
-import { migrate } from "drizzle-orm/mysql2/migrator";
-import mysql from "mysql2/promise";
+import { drizzle } from "drizzle-orm/node-postgres";
+import { migrate } from "drizzle-orm/node-postgres/migrator";
+import { Pool } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import * as schema from "@/infrastructure/db/schema";
 import { DrizzleSessionRepository } from "@/modules/sessions/infrastructure/drizzle-session-repository";
 import { describeFeedbackRepositoryContract } from "../testing/feedback-repository-contract";
 import { DrizzleFeedbackRepository } from "./drizzle-feedback-repository";
 
-// Runs against a real, disposable MySQL database (see `pnpm test:integration`).
+// Runs against a real, disposable Postgres database (see `pnpm test:integration`).
 const url = process.env.TEST_DATABASE_URL;
 if (!url) throw new Error("TEST_DATABASE_URL is not set.");
 // Setup deletes every user: refuse anything that is not a test database.
@@ -16,8 +16,8 @@ if (!new URL(url).pathname.replace(/^\//, "").endsWith("_test")) {
   throw new Error(`Refusing to run integration tests against "${url}": the database name must end in _test.`);
 }
 
-const pool = mysql.createPool({ uri: url, connectionLimit: 4 });
-const db = drizzle({ client: pool, schema, mode: "default" });
+const pool = new Pool({ connectionString: url, max: 4 });
+const db = drizzle({ client: pool, schema });
 
 beforeAll(async () => {
   await migrate(db, { migrationsFolder: "infrastructure/db/migrations" });
@@ -36,12 +36,12 @@ afterAll(async () => {
 });
 
 async function addUser({ name, email }: { name: string; email: string }) {
-  const [{ id }] = await db.insert(schema.users).values({ name, email }).$returningId();
+  const [{ id }] = await db.insert(schema.users).values({ name, email }).returning({ id: schema.users.id });
   return id;
 }
 
 async function addExercise(userId: number, name: string) {
-  const [{ id }] = await db.insert(schema.exercises).values({ userId, name, muscleGroup: "legs" }).$returningId();
+  const [{ id }] = await db.insert(schema.exercises).values({ userId, name, muscleGroup: "legs" }).returning({ id: schema.exercises.id });
   return id;
 }
 
@@ -49,7 +49,7 @@ async function addWorkout(userId: number) {
   const [{ id }] = await db
     .insert(schema.workoutSessions)
     .values({ userId, startedAt: new Date("2026-11-01T10:00:00Z"), finishedAt: new Date("2026-11-01T11:00:00Z") })
-    .$returningId();
+    .returning({ id: schema.workoutSessions.id });
   return id;
 }
 
@@ -58,7 +58,7 @@ async function setup() {
   return { repo: new DrizzleFeedbackRepository(db), addUser, addExercise, addWorkout };
 }
 
-describeFeedbackRepositoryContract("MySQL (Drizzle)", setup);
+describeFeedbackRepositoryContract("Postgres (Drizzle)", setup);
 
 describe("DrizzleFeedbackRepository", () => {
   it("deleting a workout deletes its comments, and nobody else's", async () => {
