@@ -13,6 +13,12 @@ function createPool(): Pool {
     throw new Error("DATABASE_URL is not set. Copy .env.example to .env.");
   }
   const pool = new Pool({ connectionString: url, max: 10, min: 1 });
+  // An idle connection ended by the server (Neon autosuspend, restart, network
+  // drop) is re-emitted here; unhandled, it would crash the process. The pool
+  // already discarded that client and opens a new one on the next query.
+  pool.on("error", (error) => {
+    console.error("Idle database connection error:", error.message);
+  });
   // On Vercel (Fluid compute), closes idle connections before the function is
   // suspended so they do not leak; a no-op elsewhere.
   attachDatabasePool(pool);
