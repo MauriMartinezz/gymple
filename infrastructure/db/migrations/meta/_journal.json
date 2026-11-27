@@ -1,47 +1,19 @@
 {
   "version": "7",
-  "dialect": "mysql",
+  "dialect": "postgresql",
   "entries": [
     {
       "idx": 0,
-      "version": "5",
-      "when": 1794581489749,
-      "tag": "0000_cooing_namor",
+      "version": "7",
+      "when": 1795788732050,
+      "tag": "0000_case_insensitive_collation",
       "breakpoints": true
     },
     {
       "idx": 1,
-      "version": "5",
-      "when": 1794583056643,
-      "tag": "0001_strange_celestials",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "5",
-      "when": 1794589325487,
-      "tag": "0002_brown_reaper",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "5",
-      "when": 1794623744641,
-      "tag": "0003_dizzy_the_enforcers",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "5",
-      "when": 1794625079644,
-      "tag": "0004_icy_reptil",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "5",
-      "when": 1794626053582,
-      "tag": "0005_lazy_valkyrie",
+      "version": "7",
+      "when": 1795788741370,
+      "tag": "0001_initial_schema",
       "breakpoints": true
     }
   ]
